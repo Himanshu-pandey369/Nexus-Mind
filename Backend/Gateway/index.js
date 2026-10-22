@@ -49,6 +49,18 @@ app.use(
   })
 );
 
+app.use(
+  "/agent",
+  authMiddleware,
+  proxy(process.env.AGENT_SERVICE, {
+    proxyReqPathResolver: (req) => `/agent${req.url}`,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
+      return proxyReqOpts;
+    },
+  })
+);
+
 app.use("/", (req, res) => {
   res.json({ message: "Hello from gateway" });
 });
