@@ -12,8 +12,9 @@ export const chatAgent = async (state) => {
     state.history ||
     (state.conversationId ? await getMemory(state.conversationId) : []);
 
-  const systemPrompt =
-    "You are NexusMind AI, an intelligent AI assistant. Be helpful, clear, and concise.";
+  const systemPrompt = state.searchResult
+    ? "You are NexusMind AI, an intelligent AI assistant. Use the provided search results to answer the user's question accurately, concisely, and factually. If the search results state that web search failed or could not be completed, clearly inform the user of this fact and do not pretend to have accessed the live web."
+    : "You are NexusMind AI, an intelligent AI assistant. Be helpful, clear, and concise.";
 
   const messages = [new SystemMessage(systemPrompt)];
 
@@ -41,5 +42,6 @@ export const chatAgent = async (state) => {
   return {
     ...state,
     aiResponse: response.content,
+    images: state.images || [],
   };
 };

@@ -3,13 +3,14 @@ import { graph } from "../graph/graph.js";
 import { getMemory, addMemory } from "../config/memory.js";
 
 const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
+const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision"];
 
 /**
  * POST /agent/chat
- * Body: { prompt: string, conversationId: string }
+ * Body: { prompt: string, conversationId: string, agent?: string }
  */
 export const agentChat = async (req, res) => {
-  const { prompt, conversationId } = req.body;
+  const { prompt, conversationId, agent } = req.body;
 
   // --- 1. Input validation ---
   if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
@@ -28,6 +29,18 @@ export const agentChat = async (req, res) => {
       success: false,
       message: "conversationId is required and must be a non-empty string",
     });
+  }
+
+  // Validate agent selection if provided
+  let selectedAgent = "auto";
+  if (agent !== undefined && agent !== null) {
+    if (typeof agent !== "string" || !VALID_AGENTS.includes(agent.trim().toLowerCase())) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid agent requested. Must be one of: ${VALID_AGENTS.join(", ")}`,
+      });
+    }
+    selectedAgent = agent.trim().toLowerCase();
   }
 
   const cleanPrompt = prompt.trim();
@@ -53,6 +66,7 @@ export const agentChat = async (req, res) => {
       prompt: cleanPrompt,
       conversationId: cleanConvId,
       history,
+      agent: selectedAgent,
     });
   } catch (err) {
     console.error("[Agent Controller] Graph invocation error:", err.message);
@@ -63,6 +77,7 @@ export const agentChat = async (req, res) => {
   }
 
   const aiResponse = result?.aiResponse;
+  const images = Array.isArray(result?.images) ? result.images : [];
 
   // --- 4. Verify AI response ---
   if (!aiResponse) {
@@ -81,7 +96,7 @@ export const agentChat = async (req, res) => {
     );
     await axios.post(
       `${CHAT_SERVICE_URL}/chat/conversations/${cleanConvId}/messages`,
-      { role: "assistant", content: aiResponse }
+      { role: "assistant", content: aiResponse, images }
     );
   } catch (err) {
     const msg = err.response?.data?.message || err.message;
@@ -105,5 +120,6 @@ export const agentChat = async (req, res) => {
   return res.status(200).json({
     success: true,
     aiResponse,
+    images,
   });
 };

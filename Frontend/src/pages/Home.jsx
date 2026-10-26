@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import api from "../../utils/axios";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
@@ -31,9 +31,15 @@ export default function Home() {
   const [error, setError] = useState(null);
 
   // ── Agent selection ───────────────────────────────────────────────────────
-  // "auto" = let the backend router decide (current backend behaviour).
-  // Selecting a specific agent is UI-only; the Agent Service always auto-routes.
+  // "auto" = let the backend router decide.
+  // "search", "chat", etc. = direct manual selection passed to backend.
   const [selectedAgent, setSelectedAgent] = useState("auto");
+  const selectedAgentRef = useRef(selectedAgent);
+
+  const handleAgentSelect = useCallback((agentId) => {
+    selectedAgentRef.current = agentId;
+    setSelectedAgent(agentId);
+  }, []);
 
   // ── Artifact ──────────────────────────────────────────────────────────────
   // { type: "code"|"image"|"text", content: string, imageUrl?: string }
@@ -144,19 +150,23 @@ export default function Home() {
           .catch(() => {});
       }
 
-      // POST /agent/chat — { prompt, conversationId }
+      // POST /agent/chat — { prompt, conversationId, agent }
       // The Agent controller persists the user message to Chat Service internally,
       // so we do NOT double-save it here.
+      const agentToSend = selectedAgentRef.current || selectedAgent || "auto";
+
       const res = await api.post("/agent/chat", {
         prompt: trimmed,
         conversationId: activeConvId,
+        agent: agentToSend,
       });
 
       const aiText = res.data.aiResponse;
+      const images = Array.isArray(res.data.images) ? res.data.images : [];
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: aiText },
+        { role: "assistant", content: aiText, images },
       ]);
 
       if (isFirstMessage) {
@@ -224,7 +234,8 @@ export default function Home() {
           onPromptChange={setPrompt}
           onSend={handleSend}
           selectedAgent={selectedAgent}
-          onAgentSelect={setSelectedAgent}
+          onAgentSelect={handleAgentSelect}
+          onAgentChange={handleAgentSelect}
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
           onToggleArtifact={() => setArtifactOpen((o) => !o)}
           artifactPanelOpen={artifactOpen}

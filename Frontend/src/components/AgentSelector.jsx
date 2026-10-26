@@ -67,9 +67,6 @@ function ChevronDownIcon() {
 }
 
 // ── Agent definitions ─────────────────────────────────────────────────────────
-// Kept inside the file so this module only exports the component (fast-refresh compliant).
-// The backend Agent Service always routes automatically (the router LLM decides).
-// Manual selection is a UI-only affordance; the "agent" field is NOT sent to the backend yet.
 
 const AGENTS = [
   { id: "auto",   label: "Auto",   description: "Let NexusMind decide",          Icon: AutoIcon    },
@@ -83,12 +80,22 @@ const AGENTS = [
 
 // ── AgentSelector Component ───────────────────────────────────────────────────
 
-export default function AgentSelector({ selectedAgent, onSelect }) {
+export default function AgentSelector({ selectedAgent, onSelect, onChange }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
 
   const current = AGENTS.find((a) => a.id === selectedAgent) || AGENTS[0];
   const { Icon: CurrentIcon } = current;
+
+  const handleSelect = (agentId) => {
+    if (typeof onSelect === "function") {
+      onSelect(agentId);
+    }
+    if (typeof onChange === "function") {
+      onChange(agentId);
+    }
+    setOpen(false);
+  };
 
   // Close on outside click
   useEffect(() => {
@@ -136,10 +143,7 @@ export default function AgentSelector({ selectedAgent, onSelect }) {
                 key={agent.id}
                 role="option"
                 aria-selected={isSelected}
-                onClick={() => {
-                  onSelect(agent.id);
-                  setOpen(false);
-                }}
+                onClick={() => handleSelect(agent.id)}
                 className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
                   isSelected
                     ? "bg-indigo-600/20 text-indigo-300"

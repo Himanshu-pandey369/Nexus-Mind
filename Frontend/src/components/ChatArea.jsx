@@ -32,10 +32,12 @@ export default function ChatArea({
   onSend,
   selectedAgent,
   onAgentSelect,
+  onAgentChange,
   onToggleSidebar,
   onToggleArtifact,
   artifactPanelOpen,
 }) {
+  const handleAgentChange = onAgentSelect || onAgentChange;
   return (
     <div className="flex h-full flex-col bg-slate-950 min-w-0">
       {/* ── Chat header ── */}
@@ -60,7 +62,11 @@ export default function ChatArea({
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Agent selector */}
-          <AgentSelector selectedAgent={selectedAgent} onSelect={onAgentSelect} />
+          <AgentSelector
+            selectedAgent={selectedAgent}
+            onSelect={handleAgentChange}
+            onChange={handleAgentChange}
+          />
 
           {/* Artifact panel toggle */}
           <button

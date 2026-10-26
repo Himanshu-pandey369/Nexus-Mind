@@ -61,7 +61,7 @@ export const getConversations = async (req, res) => {
 export const saveMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { role, content } = req.body;
+    const { role, content, images } = req.body;
 
     if (!role || !content) {
       return res.status(400).json({
@@ -70,7 +70,12 @@ export const saveMessage = async (req, res) => {
       });
     }
 
-    const message = await Message.create({ conversationId, role, content });
+    const messageData = { conversationId, role, content };
+    if (Array.isArray(images) && images.length > 0) {
+      messageData.images = images;
+    }
+
+    const message = await Message.create(messageData);
 
     return res.status(201).json({
       success: true,
