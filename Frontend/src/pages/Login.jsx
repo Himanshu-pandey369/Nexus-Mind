@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { signInWithPopup } from 'firebase/auth'
 import { auth, googleProvide } from '../../utils/firebase'
 import api from '../../utils/axios'
@@ -14,7 +13,6 @@ const googleLogin = async (onLogin) => {
   }
 }
 
-
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 48 48" className="h-5 w-5" aria-hidden="true">
@@ -26,28 +24,7 @@ function GoogleIcon() {
   )
 }
 
-function EyeIcon({ open }) {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {open ? (
-        <>
-          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-          <circle cx="12" cy="12" r="3" />
-        </>
-      ) : (
-        <>
-          <path d="M3 3l18 18" />
-          <path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7c1.8 0 3.4-.5 4.8-1.3" />
-          <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
-        </>
-      )}
-    </svg>
-  )
-}
-
 export default function Login({ onLogin }) {
-  const [showPassword, setShowPassword] = useState(false)
-
   return (
     <div className="flex min-h-svh bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
       {/* Brand panel */}
@@ -95,7 +72,6 @@ export default function Login({ onLogin }) {
             <span className="text-xs tracking-wide text-slate-400 uppercase">or</span>
             <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
           </div>
-
 
           <p className="mt-8 text-center text-sm text-slate-500 dark:text-slate-400">
             Don&apos;t have an account?{' '}
