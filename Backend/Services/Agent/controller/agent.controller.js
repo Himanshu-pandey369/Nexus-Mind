@@ -78,6 +78,7 @@ export const agentChat = async (req, res) => {
 
   const aiResponse = result?.aiResponse;
   const images = Array.isArray(result?.images) ? result.images : [];
+  const artifacts = Array.isArray(result?.artifacts) ? result.artifacts : [];
 
   // --- 4. Verify AI response ---
   if (!aiResponse) {
@@ -96,7 +97,7 @@ export const agentChat = async (req, res) => {
     );
     await axios.post(
       `${CHAT_SERVICE_URL}/chat/conversations/${cleanConvId}/messages`,
-      { role: "assistant", content: aiResponse, images }
+      { role: "assistant", content: aiResponse, images, artifacts }
     );
   } catch (err) {
     const msg = err.response?.data?.message || err.message;
@@ -121,5 +122,6 @@ export const agentChat = async (req, res) => {
     success: true,
     aiResponse,
     images,
+    artifacts,
   });
 };

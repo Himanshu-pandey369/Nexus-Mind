@@ -283,6 +283,14 @@ function CloseXIcon() {
   );
 }
 
+function ArtifactIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden="true">
+      <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25Zm4.03 6.28a.75.75 0 0 0-1.06-1.06L5.97 9.47a.75.75 0 0 0 0 1.06l1.25 1.25a.75.75 0 1 0 1.06-1.06l-.72-.72.72-.72Zm4.5-1.06a.75.75 0 1 0-1.06 1.06l.72.72-.72.72a.75.75 0 1 0 1.06 1.06l1.25-1.25a.75.75 0 0 0 0-1.06l-1.25-1.25Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
 // ── ImageGrid ─────────────────────────────────────────────────────────────────
 
 function ImageGrid({ images }) {
@@ -327,10 +335,12 @@ function ImageGrid({ images }) {
 
 // ── MessageBubble ─────────────────────────────────────────────────────────────
 
-export default function MessageBubble({ message }) {
+export default function MessageBubble({ message, onSelectArtifact }) {
   const isUser = message.role === "user";
   const time = formatTime(message.createdAt);
   const images = Array.isArray(message.images) ? message.images : [];
+  const artifacts = Array.isArray(message.artifacts) ? message.artifacts : [];
+  const projectFiles = artifacts.flatMap((a) => (Array.isArray(a.files) ? a.files : []));
 
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
@@ -356,6 +366,22 @@ export default function MessageBubble({ message }) {
 
             {/* Search result images */}
             <ImageGrid images={images} />
+
+            {/* Coding Agent Generated Files / Artifact trigger */}
+            {projectFiles.length > 0 && (
+              <div className="mt-3 pt-2 border-t border-slate-700/60">
+                <button
+                  type="button"
+                  onClick={() => onSelectArtifact?.({ type: "project", artifacts })}
+                  className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-950/50 px-3 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-900/60 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <ArtifactIcon />
+                  <span>
+                    View Generated Project ({projectFiles.length} file{projectFiles.length === 1 ? "" : "s"})
+                  </span>
+                </button>
+              </div>
+            )}
           </div>
         )}
 

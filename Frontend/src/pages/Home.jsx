@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import api from "../../utils/axios";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
@@ -30,71 +30,78 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // ── Artifact ──────────────────────────────────────────────────────────────
+  // Coding agent artifacts: { type, files: [{ name, content }] }[]
+  // Legacy text artifact: { type: "code", content: string } (retained for non-coding messages)
+  const [artifact, setArtifact] = useState(null);
+
   // ── Agent selection ───────────────────────────────────────────────────────
   // "auto" = let the backend router decide.
   // "search", "chat", etc. = direct manual selection passed to backend.
   const [selectedAgent, setSelectedAgent] = useState("auto");
   const selectedAgentRef = useRef(selectedAgent);
 
-  const handleAgentSelect = useCallback((agentId) => {
+  const handleAgentSelect = (agentId) => {
     selectedAgentRef.current = agentId;
     setSelectedAgent(agentId);
-  }, []);
+  };
 
-  // ── Artifact ──────────────────────────────────────────────────────────────
-  // { type: "code"|"image"|"text", content: string, imageUrl?: string }
-  const [artifact, setArtifact] = useState(null);
+  // ── Artifact selection from message bubble ────────────────────────────────
+  const handleSelectArtifact = (art) => {
+    setArtifact(art);
+    setArtifactOpen(true);
+  };
 
   // ── Shared conversation-reset helper ─────────────────────────────────────
   // Inline because it only resets local state — no async, no deps needed.
-  const resetChat = useCallback(() => {
+  const resetChat = () => {
     setMessages([]);
     setArtifact(null);
     setConversationTitle("New Conversation");
     setPrompt("");
     setError(null);
-  }, []);
+  };
 
   // ── Load messages for a selected conversation ─────────────────────────────
-  const loadConversation = useCallback(
-    async (id, initialTitle) => {
-      resetChat();
-      setConversationId(id);
-      if (initialTitle) {
+  const loadConversation = async (id, initialTitle) => {
+    resetChat();
+    setConversationId(id);
+    if (initialTitle) {
+      setConversationTitle(initialTitle);
+    }
+    setLoading(true);
+    try {
+      const res = await api.get(`/chat/conversations/${id}/messages`);
+      const loaded = res.data.messages || [];
+      setMessages(loaded);
+      // Retain initialTitle if valid, or derive from the first user message
+      const firstUser = loaded.find((m) => m.role === "user");
+      if (initialTitle && initialTitle !== "New Conversation") {
         setConversationTitle(initialTitle);
+      } else if (firstUser?.content) {
+        const t = firstUser.content;
+        setConversationTitle(t.slice(0, 60) + (t.length > 60 ? "…" : ""));
       }
-      setLoading(true);
-      try {
-        const res = await api.get(`/chat/conversations/${id}/messages`);
-        const loaded = res.data.messages || [];
-        setMessages(loaded);
-        // Retain initialTitle if valid, or derive from the first user message
-        const firstUser = loaded.find((m) => m.role === "user");
-        if (initialTitle && initialTitle !== "New Conversation") {
-          setConversationTitle(initialTitle);
-        } else if (firstUser?.content) {
-          const t = firstUser.content;
-          setConversationTitle(t.slice(0, 60) + (t.length > 60 ? "…" : ""));
-        }
 
-        // Restore artifact if the latest assistant message contains code
-        const lastAssistant = [...loaded]
-          .reverse()
-          .find((m) => m.role === "assistant");
-        if (lastAssistant && lastAssistant.content.includes("```")) {
-          setArtifact({ type: "code", content: lastAssistant.content });
-        } else {
-          setArtifact(null);
-        }
-      } catch (err) {
-        console.error("Failed to load messages:", err.message);
-        setError("Could not load conversation messages.");
-      } finally {
-        setLoading(false);
+      // Restore artifact from the latest assistant message:
+      // Prefer structured artifacts (Coding Agent), fall back to legacy code-block detection
+      const lastAssistant = [...loaded]
+        .reverse()
+        .find((m) => m.role === "assistant");
+      if (lastAssistant && Array.isArray(lastAssistant.artifacts) && lastAssistant.artifacts.length > 0) {
+        setArtifact({ type: "project", artifacts: lastAssistant.artifacts });
+      } else if (lastAssistant && lastAssistant.content.includes("```")) {
+        setArtifact({ type: "code", content: lastAssistant.content });
+      } else {
+        setArtifact(null);
       }
-    },
-    [resetChat]
-  );
+    } catch (err) {
+      console.error("Failed to load messages:", err.message);
+      setError("Could not load conversation messages.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ── Sidebar: select a conversation ───────────────────────────────────────
   const handleSelectConversation = (id, title) => {
@@ -163,10 +170,11 @@ export default function Home() {
 
       const aiText = res.data.aiResponse;
       const images = Array.isArray(res.data.images) ? res.data.images : [];
+      const artifacts = Array.isArray(res.data.artifacts) ? res.data.artifacts : [];
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: aiText, images },
+        { role: "assistant", content: aiText, images, artifacts },
       ]);
 
       if (isFirstMessage) {
@@ -174,9 +182,12 @@ export default function Home() {
       }
 
       // ── Artifact detection ──────────────────────────────────────────────
-      // Current backend: aiResponse is always plain text.
-      // Surface code blocks (``` fences) in the artifact panel.
-      if (aiText && aiText.includes("```")) {
+      // Priority 1: structured project artifacts from Coding Agent
+      // Priority 2: legacy — surface markdown code fences in the artifact panel
+      if (artifacts.length > 0) {
+        setArtifact({ type: "project", artifacts });
+        setArtifactOpen(true);
+      } else if (aiText && aiText.includes("```")) {
         setArtifact({ type: "code", content: aiText });
         setArtifactOpen(true);
       } else {
@@ -238,6 +249,7 @@ export default function Home() {
           onAgentChange={handleAgentSelect}
           onToggleSidebar={() => setSidebarOpen((o) => !o)}
           onToggleArtifact={() => setArtifactOpen((o) => !o)}
+          onSelectArtifact={handleSelectArtifact}
           artifactPanelOpen={artifactOpen}
         />
       </div>

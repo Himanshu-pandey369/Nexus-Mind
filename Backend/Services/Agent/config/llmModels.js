@@ -1,6 +1,6 @@
 import { ChatGroq } from "@langchain/groq";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-
+import { ChatOpenRouter } from "@langchain/openrouter";
 // Groq — fast model used for chat, search summarisation, and routing
 const groq = new ChatGroq({
   model: "openai/gpt-oss-120b",
@@ -8,11 +8,18 @@ const groq = new ChatGroq({
 
 // Gemini — used for coding tasks
 const gemini = new ChatGoogleGenerativeAI({
-  model: "gemini-2.0-flash",
+  model: "gemini-3.8-flash",
+});
+
+const openrouter = new ChatOpenRouter({
+  model: "deepseek/deepseek-chat",
+  temperature:0,
+  maxTokens:2500
 });
 
 export const getModel = async (agent) => {
-  if (agent === "coding") return gemini;
-  // chat, search, router, and everything else → groq
-  return groq;
+  if (agent === "coding") return openrouter;
+  // search, router, intent classification, and everything else → groq (fast & cheap)
+  if (agent === "chat") return gemini;
+  return groq; // "intent", "router", "search", default
 };

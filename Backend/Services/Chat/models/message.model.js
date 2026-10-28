@@ -1,5 +1,27 @@
 import mongoose from "mongoose";
 
+// ── Artifact file sub-schema ──────────────────────────────────────────────────
+
+const artifactFileSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    content: { type: String, required: true },
+  },
+  { _id: false }
+);
+
+// ── Artifact sub-schema ───────────────────────────────────────────────────────
+
+const artifactSchema = new mongoose.Schema(
+  {
+    type: { type: String, required: true }, // e.g. "code_generation"
+    files: { type: [artifactFileSchema], default: [] },
+  },
+  { _id: false }
+);
+
+// ── Message schema ────────────────────────────────────────────────────────────
+
 const messageSchema = new mongoose.Schema(
   {
     conversationId: {
@@ -18,6 +40,11 @@ const messageSchema = new mongoose.Schema(
     },
     images: {
       type: [String],
+      default: [],
+    },
+    // Structured artifacts produced by the Coding Agent (empty for other agents)
+    artifacts: {
+      type: [artifactSchema],
       default: [],
     },
   },

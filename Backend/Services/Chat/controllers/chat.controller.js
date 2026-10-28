@@ -61,7 +61,7 @@ export const getConversations = async (req, res) => {
 export const saveMessage = async (req, res) => {
   try {
     const { conversationId } = req.params;
-    const { role, content, images } = req.body;
+    const { role, content, images, artifacts } = req.body;
 
     if (!role || !content) {
       return res.status(400).json({
@@ -73,6 +73,9 @@ export const saveMessage = async (req, res) => {
     const messageData = { conversationId, role, content };
     if (Array.isArray(images) && images.length > 0) {
       messageData.images = images;
+    }
+    if (Array.isArray(artifacts) && artifacts.length > 0) {
+      messageData.artifacts = artifacts;
     }
 
     const message = await Message.create(messageData);
@@ -128,7 +131,7 @@ export const updateConversationTitle = async (req, res) => {
     const conversation = await Conversation.findByIdAndUpdate(
       conversationId,
       { title },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!conversation) {

@@ -46,7 +46,7 @@ function TypingIndicator() {
 
 // ── MessageList ───────────────────────────────────────────────────────────────
 
-export default function MessageList({ messages, loading, error }) {
+export default function MessageList({ messages, loading, error, onSelectArtifact }) {
   const endRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -74,7 +74,11 @@ export default function MessageList({ messages, loading, error }) {
       ) : (
         <div className="mx-auto max-w-3xl space-y-2 px-4 py-6">
           {messages.map((msg, i) => (
-            <MessageBubble key={msg._id || `msg-${i}`} message={msg} />
+            <MessageBubble
+              key={msg._id || `msg-${i}`}
+              message={msg}
+              onSelectArtifact={onSelectArtifact}
+            />
           ))}
 
           {loading && <TypingIndicator />}

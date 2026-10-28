@@ -35,6 +35,7 @@ export default function ChatArea({
   onAgentChange,
   onToggleSidebar,
   onToggleArtifact,
+  onSelectArtifact,
   artifactPanelOpen,
 }) {
   const handleAgentChange = onAgentSelect || onAgentChange;
@@ -84,7 +85,12 @@ export default function ChatArea({
       </header>
 
       {/* ── Message list (scrollable) ── */}
-      <MessageList messages={messages} loading={loading} error={error} />
+      <MessageList
+        messages={messages}
+        loading={loading}
+        error={error}
+        onSelectArtifact={onSelectArtifact}
+      />
 
       {/* ── Chat input ── */}
       <ChatInput

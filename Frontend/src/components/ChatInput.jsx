@@ -19,16 +19,15 @@ export default function ChatInput({
   loading,
   disabled,
 }) {
-
-  useEffect(() => {
-  if (prompt === "" && textareaRef.current) {
-    textareaRef.current.style.height = "24px";
-  }
-}, [prompt]);
-
   const textareaRef = useRef(null);
 
- const handleKeyDown = (e) => {
+  useEffect(() => {
+    if (prompt === "" && textareaRef.current) {
+      textareaRef.current.style.height = "24px";
+    }
+  }, [prompt]);
+
+  const handleKeyDown = (e) => {
   if (e.key === "Enter" && !e.shiftKey) {
     e.preventDefault();
     handleSend();
