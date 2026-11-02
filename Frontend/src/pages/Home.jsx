@@ -88,8 +88,11 @@ export default function Home() {
       const lastAssistant = [...loaded]
         .reverse()
         .find((m) => m.role === "assistant");
-      if (lastAssistant && Array.isArray(lastAssistant.artifacts) && lastAssistant.artifacts.length > 0) {
-        setArtifact({ type: "project", artifacts: lastAssistant.artifacts });
+      const codingArtifacts = lastAssistant?.artifacts?.filter(
+        (a) => a.type === "code_generation" || (Array.isArray(a.files) && a.files.length > 0)
+      );
+      if (codingArtifacts && codingArtifacts.length > 0) {
+        setArtifact({ type: "project", artifacts: codingArtifacts });
       } else if (lastAssistant && lastAssistant.content.includes("```")) {
         setArtifact({ type: "code", content: lastAssistant.content });
       } else {
@@ -184,8 +187,11 @@ export default function Home() {
       // ── Artifact detection ──────────────────────────────────────────────
       // Priority 1: structured project artifacts from Coding Agent
       // Priority 2: legacy — surface markdown code fences in the artifact panel
-      if (artifacts.length > 0) {
-        setArtifact({ type: "project", artifacts });
+      const codingArtifacts = artifacts.filter(
+        (a) => a.type === "code_generation" || (Array.isArray(a.files) && a.files.length > 0)
+      );
+      if (codingArtifacts.length > 0) {
+        setArtifact({ type: "project", artifacts: codingArtifacts });
         setArtifactOpen(true);
       } else if (aiText && aiText.includes("```")) {
         setArtifact({ type: "code", content: aiText });

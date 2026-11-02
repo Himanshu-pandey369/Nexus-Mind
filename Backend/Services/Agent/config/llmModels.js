@@ -20,6 +20,9 @@ const openrouter = new ChatOpenRouter({
 export const getModel = async (agent) => {
   if (agent === "coding") return openrouter;
   // search, router, intent classification, and everything else → groq (fast & cheap)
-  if (agent === "chat") return gemini;
+  if (agent === "chat") return groq;
+  if (agent === "vision") return groq; // prompt enhancement for image generation
+  if (agent === "pdf") return groq;   // structured document content generation
+  if (agent === "ppt") return groq;   // structured presentation content generation
   return groq; // "intent", "router", "search", default
 };

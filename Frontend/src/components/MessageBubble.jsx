@@ -7,6 +7,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import api from "../../utils/axios";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -224,16 +225,54 @@ const markdownComponents = {
   ),
 
   // Links — safe href only
-  a: ({ href, children }) => (
-    <a
-      href={safeHref(href || "")}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ href, children }) => {
+    const safe = safeHref(href || "");
+    const isPdfLink = safe.includes("res.cloudinary.com") && safe.toLowerCase().includes(".pdf");
+
+    if (isPdfLink) {
+      const handlePdfClick = async (e) => {
+        e.preventDefault();
+        try {
+          const res = await api.get("/agent/pdf/download", {
+            params: { url: safe },
+            responseType: "blob",
+          });
+          const blobUrl = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = safe.split("/").pop() || "document.pdf";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+          console.error("PDF download proxy error:", err);
+          window.open(safe, "_blank");
+        }
+      };
+
+      return (
+        <a
+          href={safe}
+          onClick={handlePdfClick}
+          className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300 cursor-pointer"
+        >
+          {children}
+        </a>
+      );
+    }
+
+    return (
+      <a
+        href={safe}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300"
+      >
+        {children}
+      </a>
+    );
+  },
 };
 
 // ── ImageLightbox ─────────────────────────────────────────────────────────────
@@ -291,6 +330,158 @@ function ArtifactIcon() {
   );
 }
 
+// ── PdfIcon ───────────────────────────────────────────────────────────────────
+
+function PdfIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-red-400" aria-hidden="true">
+      <path fillRule="evenodd" d="M3 3.5A1.5 1.5 0 0 1 4.5 2h6.879a1.5 1.5 0 0 1 1.06.44l4.122 4.12A1.5 1.5 0 0 1 17 7.622V16.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16.5v-13Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+// ── PdfDownloadCard ───────────────────────────────────────────────────────────
+
+function PdfDownloadCard({ title, url }) {
+  const [downloading, setDownloading] = useState(false);
+
+  if (!url) return null;
+
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    setDownloading(true);
+    try {
+      const filename = `${title || "document"}.pdf`;
+      const response = await api.get("/agent/pdf/download", {
+        params: { url, filename },
+        responseType: "blob",
+      });
+
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Authenticated PDF download failed, falling back to direct URL:", err);
+      window.open(url, "_blank");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3">
+      <PdfIcon />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold text-slate-200">
+          {title || "Generated Document"}
+        </p>
+        <p className="text-[10px] text-slate-500">PDF · NexusMind</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloading}
+        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-red-500 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-red-500"
+      >
+        {downloading ? (
+          <>
+            <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            Downloading...
+          </>
+        ) : (
+          "Download"
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ── PptIcon ───────────────────────────────────────────────────────────────────
+
+function PptIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-orange-400" aria-hidden="true">
+      <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a3.5 3.5 0 0 1-1.5 2.898v9.523A.75.75 0 0 1 15.75 18H4.25A.75.75 0 0 1 3.5 17.25V7.527A3.5 3.5 0 0 1 2 4.629V2.341a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+// ── PptDownloadCard ───────────────────────────────────────────────────────────
+
+function PptDownloadCard({ title, url }) {
+  const [downloading, setDownloading] = useState(false);
+
+  if (!url) return null;
+
+  const handleDownload = async (e) => {
+    e.preventDefault();
+    setDownloading(true);
+    try {
+      const filename = `${title || "presentation"}.pptx`;
+      const response = await api.get("/agent/ppt/download", {
+        params: { url, filename },
+        responseType: "blob",
+      });
+
+      const blobUrl = window.URL.createObjectURL(
+        new Blob([response.data], {
+          type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        })
+      );
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Authenticated PPT download failed, falling back to direct URL:", err);
+      window.open(url, "_blank");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-orange-500/30 bg-orange-950/30 px-4 py-3">
+      <PptIcon />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-semibold text-slate-200">
+          {title || "Generated Presentation"}
+        </p>
+        <p className="text-[10px] text-slate-500">PPTX · NexusMind</p>
+      </div>
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={downloading}
+        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-orange-500 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-orange-500"
+      >
+        {downloading ? (
+          <>
+            <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+            </svg>
+            Downloading...
+          </>
+        ) : (
+          "Download"
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ── ImageGrid ─────────────────────────────────────────────────────────────────
 
 function ImageGrid({ images }) {
@@ -301,29 +492,57 @@ function ImageGrid({ images }) {
 
   if (!images || images.length === 0) return null;
 
+  // A single generated image gets a wider square display; multiple images use a grid
+  const isSingle = images.length === 1;
+
   return (
     <>
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {images.map((imgUrl, idx) => (
-          <button
-            key={`${imgUrl}-${idx}`}
-            type="button"
-            onClick={() => openLightbox(imgUrl, `Search result ${idx + 1}`)}
-            className="group/img relative block aspect-video overflow-hidden rounded-lg border border-slate-700 bg-slate-900 transition hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            aria-label={`View image ${idx + 1}`}
-          >
-            <img
-              src={imgUrl}
-              alt={`Search result ${idx + 1}`}
-              loading="lazy"
-              onError={(e) => {
-                const container = e.currentTarget.parentElement;
-                if (container) container.style.display = "none";
-              }}
-              className="h-full w-full object-cover transition duration-200 group-hover/img:scale-105"
-            />
-          </button>
-        ))}
+      <div
+        className={
+          isSingle
+            ? "mt-3"
+            : "mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3"
+        }
+      >
+        {images.map((imgUrl, idx) => {
+          const altText = `Image ${idx + 1}`;
+          return (
+            <button
+              key={`${imgUrl}-${idx}`}
+              type="button"
+              onClick={() => openLightbox(imgUrl, altText)}
+              className={`group/img relative block overflow-hidden rounded-xl border border-slate-700 bg-slate-900 transition hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+                isSingle
+                  ? "w-full max-w-sm aspect-square"
+                  : "aspect-video"
+              }`}
+              aria-label={`View ${altText}`}
+            >
+              <img
+                src={imgUrl}
+                alt={altText}
+                loading="lazy"
+                onError={(e) => {
+                  const container = e.currentTarget.parentElement;
+                  if (container) container.style.display = "none";
+                }}
+                className="h-full w-full object-cover transition duration-200 group-hover/img:scale-105"
+              />
+              {/* Download hint on hover */}
+              <a
+                href={imgUrl}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="absolute bottom-2 right-2 hidden rounded-md bg-black/60 px-2 py-1 text-[10px] text-white backdrop-blur-sm group-hover/img:flex items-center gap-1 hover:bg-black/80"
+                aria-label="Download image"
+              >
+                ↓ Save
+              </a>
+            </button>
+          );
+        })}
       </div>
 
       {lightbox && (
@@ -340,7 +559,38 @@ export default function MessageBubble({ message, onSelectArtifact }) {
   const time = formatTime(message.createdAt);
   const images = Array.isArray(message.images) ? message.images : [];
   const artifacts = Array.isArray(message.artifacts) ? message.artifacts : [];
-  const projectFiles = artifacts.flatMap((a) => (Array.isArray(a.files) ? a.files : []));
+
+  // Separate PDF artifacts from coding project artifacts
+  const pdfArtifacts = [...artifacts.filter((a) => a.type === "pdf" && a.url)];
+  if (pdfArtifacts.length === 0 && message.content) {
+    const match = message.content.match(/\[(?:⬇️\s*)?Download PDF\]\((https?:\/\/[^\s)]+\.pdf[^\s)]*)\)/i);
+    if (match) {
+      const titleMatch = message.content.match(/\*\*Title:\*\*\s*(.+)/i);
+      pdfArtifacts.push({
+        type: "pdf",
+        title: titleMatch ? titleMatch[1].trim() : "Generated Document",
+        url: match[1],
+      });
+    }
+  }
+
+  // Separate PPT artifacts
+  const pptArtifacts = [...artifacts.filter((a) => a.type === "ppt" && a.url)];
+  if (pptArtifacts.length === 0 && message.content) {
+    const match = message.content.match(/\[(?:⬇️\s*)?Download Presentation\]\((https?:\/\/[^\s)]+\.pptx[^\s)]*)\)/i);
+    if (match) {
+      const titleMatch = message.content.match(/\*\*Presentation:\*\*\s*(.+)/i);
+      pptArtifacts.push({
+        type: "ppt",
+        title: titleMatch ? titleMatch[1].trim() : "Generated Presentation",
+        url: match[1],
+      });
+    }
+  }
+
+  const projectFiles = artifacts
+    .filter((a) => a.type !== "pdf" && a.type !== "ppt")
+    .flatMap((a) => (Array.isArray(a.files) ? a.files : []));
 
   return (
     <div className={`flex w-full ${isUser ? "justify-end" : "justify-start"}`}>
@@ -364,15 +614,33 @@ export default function MessageBubble({ message, onSelectArtifact }) {
               {message.content || ""}
             </ReactMarkdown>
 
-            {/* Search result images */}
+            {/* Search result images or Vision Agent generated images */}
             <ImageGrid images={images} />
+
+            {/* PDF Agent — download card for each generated PDF */}
+            {pdfArtifacts.map((pdf, idx) => (
+              <PdfDownloadCard
+                key={`${pdf.url}-${idx}`}
+                title={pdf.title}
+                url={pdf.url}
+              />
+            ))}
+
+            {/* PPT Agent — download card for each generated presentation */}
+            {pptArtifacts.map((ppt, idx) => (
+              <PptDownloadCard
+                key={`${ppt.url}-${idx}`}
+                title={ppt.title}
+                url={ppt.url}
+              />
+            ))}
 
             {/* Coding Agent Generated Files / Artifact trigger */}
             {projectFiles.length > 0 && (
               <div className="mt-3 pt-2 border-t border-slate-700/60">
                 <button
                   type="button"
-                  onClick={() => onSelectArtifact?.({ type: "project", artifacts })}
+                  onClick={() => onSelectArtifact?.({ type: "project", artifacts: artifacts.filter((a) => a.type !== "pdf" && a.type !== "ppt") })}
                   className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-950/50 px-3 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-900/60 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <ArtifactIcon />

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { graph } from "../graph/graph.js";
 import { getMemory, addMemory } from "../config/memory.js";
+import cloudinary from "../config/cloudinary.js";
 
 const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
 const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision"];
@@ -124,4 +125,153 @@ export const agentChat = async (req, res) => {
     images,
     artifacts,
   });
+};
+
+/**
+ * GET /agent/pdf/download
+ * Query parameters:
+ *   - url: Cloudinary delivery URL
+ *   - publicId: Cloudinary asset public ID
+ *   - filename: Optional custom filename for Content-Disposition
+ *
+ * Securely streams the PDF from Cloudinary using authenticated signed URL,
+ * avoiding Cloudinary CDN 401 ACL/delivery restrictions and protecting assets.
+ */
+export const downloadPDF = async (req, res) => {
+  try {
+    const { publicId, url, filename } = req.query;
+    let targetPublicId = publicId;
+
+    if (!targetPublicId && url) {
+      const match = url.match(/\/(?:raw|image)\/upload\/(?:v\d+\/)?(.+?)(?:\?|$)/);
+      if (match) {
+        targetPublicId = decodeURIComponent(match[1]);
+      }
+    }
+
+    if (!targetPublicId) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid 'publicId' or 'url' query parameter is required",
+      });
+    }
+
+    const resourceType = url && url.includes("/image/upload/") ? "image" : "raw";
+
+    // Generate authenticated signed download URL (valid for 1 hour)
+    const signedUrl = cloudinary.utils.private_download_url(targetPublicId, "pdf", {
+      resource_type: resourceType,
+      type: "upload",
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const upstreamResponse = await fetch(signedUrl);
+    if (!upstreamResponse.ok) {
+      return res.status(upstreamResponse.status).json({
+        success: false,
+        message: `Failed to fetch asset from Cloudinary: ${upstreamResponse.statusText}`,
+      });
+    }
+
+    const arrayBuffer = await upstreamResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const safeFilename =
+      filename ||
+      targetPublicId.split("/").pop() ||
+      "document.pdf";
+    const finalFilename = safeFilename.endsWith(".pdf")
+      ? safeFilename
+      : `${safeFilename}.pdf`;
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${finalFilename}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("[Agent Controller] PDF download error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to download PDF",
+    });
+  }
+};
+
+/**
+ * GET /agent/ppt/download
+ * Query parameters:
+ *   - url: Cloudinary delivery URL for the PPTX (raw resource)
+ *   - filename: Optional custom filename for Content-Disposition
+ *
+ * Streams the PPTX from Cloudinary using a signed URL to protect the asset.
+ */
+export const downloadPPT = async (req, res) => {
+  try {
+    const { url, filename } = req.query;
+
+    if (!url) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid 'url' query parameter is required",
+      });
+    }
+
+    // Extract public ID from the raw Cloudinary URL
+    // Format: https://res.cloudinary.com/<cloud>/raw/upload/v<ver>/<public_id>
+    const match = url.match(/\/raw\/upload\/(?:v\d+\/)?(.+?)(?:\?|$)/);
+    if (!match) {
+      return res.status(400).json({
+        success: false,
+        message: "Could not extract Cloudinary public ID from the provided URL",
+      });
+    }
+
+    const targetPublicId = decodeURIComponent(match[1]);
+
+    // Generate authenticated signed download URL (valid for 1 hour)
+    const signedUrl = cloudinary.utils.private_download_url(
+      targetPublicId,
+      "pptx",
+      {
+        resource_type: "raw",
+        type: "upload",
+        expires_at: Math.floor(Date.now() / 1000) + 3600,
+      }
+    );
+
+    const upstreamResponse = await fetch(signedUrl);
+    if (!upstreamResponse.ok) {
+      return res.status(upstreamResponse.status).json({
+        success: false,
+        message: `Failed to fetch asset from Cloudinary: ${upstreamResponse.statusText}`,
+      });
+    }
+
+    const arrayBuffer = await upstreamResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const safeFilename =
+      filename ||
+      targetPublicId.split("/").pop() ||
+      "presentation.pptx";
+    const finalFilename = safeFilename.endsWith(".pptx")
+      ? safeFilename
+      : `${safeFilename}.pptx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${finalFilename}"`);
+    res.setHeader("Content-Length", buffer.length);
+
+    return res.send(buffer);
+  } catch (error) {
+    console.error("[Agent Controller] PPT download error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to download presentation",
+    });
+  }
 };

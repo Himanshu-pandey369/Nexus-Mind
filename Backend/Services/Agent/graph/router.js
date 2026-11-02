@@ -42,8 +42,8 @@ Agent selection rules:
    - Software architecture and development tasks.
 
 4. pdf:
-   - Requests to read, summarize, analyze, or extract information
-     from PDF documents.
+   - Requests to generate, create, write, or export PDF documents or reports on any topic.
+   - Requests to read, summarize, analyze, or extract information from PDF documents.
    - Questions about an uploaded PDF.
    - Creating or modifying PDF documents.
 
