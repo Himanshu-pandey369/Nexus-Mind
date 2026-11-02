@@ -61,6 +61,30 @@ app.use(
   })
 );
 
+app.use(
+  "/credits",
+  authMiddleware,
+  proxy(process.env.AUTH_SERVICE, {
+    proxyReqPathResolver: (req) => `/credits${req.url}`,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
+      return proxyReqOpts;
+    },
+  })
+);
+
+app.use(
+  "/usage",
+  authMiddleware,
+  proxy(process.env.AUTH_SERVICE, {
+    proxyReqPathResolver: (req) => `/usage${req.url}`,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
+      return proxyReqOpts;
+    },
+  })
+);
+
 app.use("/", (req, res) => {
   res.json({ message: "Hello from gateway" });
 });

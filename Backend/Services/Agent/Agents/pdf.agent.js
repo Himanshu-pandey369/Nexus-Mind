@@ -3,6 +3,7 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { getModel } from "../config/llmModels.js";
 import { generatePDF } from "../utils/generatePDF.js";
 import { uploadImage } from "../utils/cloudinaryUpload.js";
+import { extractTokenUsage } from "../utils/extractTokens.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -58,9 +59,11 @@ async function generateDocumentContent(userPrompt) {
   ];
 
   let raw;
+  let usage = null;
   try {
     const response = await llm.invoke(messages);
     raw = String(response.content).trim();
+    usage = extractTokenUsage(response, "openai/gpt-oss-120b");
   } catch (err) {
     throw new Error(`LLM invocation failed: ${err.message}`);
   }
@@ -114,6 +117,7 @@ async function generateDocumentContent(userPrompt) {
     title:    parsed.title.trim(),
     subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle.trim() : "",
     sections: cleanSections,
+    usage,
   };
 }
 
@@ -247,5 +251,6 @@ ${sectionSummary}
       ...(Array.isArray(state.artifacts) ? state.artifacts : []),
       pdfArtifact,
     ],
+    ...(docContent?.usage ? { usage: docContent.usage } : {}),
   };
 };

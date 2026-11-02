@@ -1,8 +1,10 @@
 import { useState, useRef } from "react";
+import { useDispatch } from "react-redux";
 import api from "../../utils/axios";
 import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import ArtifactPanel from "../components/ArtifactPanel";
+import { fetchCreditBalance, setCreditBalance } from "../redux/creditsSlice";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Home — top-level layout and shared state coordinator
@@ -13,6 +15,8 @@ import ArtifactPanel from "../components/ArtifactPanel";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const dispatch = useDispatch();
+
   // ── Panel visibility (tablet / mobile) ────────────────────────────────────
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [artifactOpen, setArtifactOpen] = useState(false);
@@ -180,6 +184,13 @@ export default function Home() {
         { role: "assistant", content: aiText, images, artifacts },
       ]);
 
+      // Synchronize updated credit balance
+      if (typeof res.data.credits === "number") {
+        dispatch(setCreditBalance(res.data.credits));
+      } else {
+        dispatch(fetchCreditBalance());
+      }
+
       if (isFirstMessage) {
         setSidebarRefresh((n) => n + 1);
       }
@@ -200,10 +211,16 @@ export default function Home() {
         setArtifact(null);
       }
     } catch (err) {
-      const msg =
-        err.response?.data?.message ||
-        "Something went wrong. Please try again.";
-      setError(msg);
+      if (err.response?.status === 402) {
+        setError(
+          "⚡ Insufficient credits to run this agent. Please top up your credits from the sidebar to continue."
+        );
+      } else {
+        const msg =
+          err.response?.data?.message ||
+          "Something went wrong. Please try again.";
+        setError(msg);
+      }
       // Optimistic message remains visible so the user knows what they sent.
     } finally {
       setLoading(false);

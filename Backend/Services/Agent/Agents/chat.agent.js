@@ -5,6 +5,7 @@ import {
 } from "@langchain/core/messages";
 import { getModel } from "../config/llmModels.js";
 import { getMemory } from "../config/memory.js";
+import { extractTokenUsage } from "../utils/extractTokens.js";
 
 export const chatAgent = async (state) => {
   const llm = await getModel("chat");
@@ -36,6 +37,7 @@ export const chatAgent = async (state) => {
   messages.push(new HumanMessage(userContent));
 
   const response = await llm.invoke(messages);
+  const tokenUsage = extractTokenUsage(response, "openai/gpt-oss-120b");
 
   console.log("[Chat Agent] Response generated");
 
@@ -43,5 +45,6 @@ export const chatAgent = async (state) => {
     ...state,
     aiResponse: response.content,
     images: state.images || [],
+    ...(tokenUsage ? { usage: tokenUsage } : {}),
   };
 };

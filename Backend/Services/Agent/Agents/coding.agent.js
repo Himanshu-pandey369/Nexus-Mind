@@ -1,5 +1,6 @@
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { getModel } from "../config/llmModels.js";
+import { extractTokenUsage } from "../utils/extractTokens.js";
 
 // ── Supported intents ──────────────────────────────────────────────────────────
 
@@ -96,9 +97,11 @@ Rules:
   ];
 
   let raw;
+  let usage = null;
   try {
     const response = await llm.invoke(messages);
     raw = String(response.content);
+    usage = extractTokenUsage(response, "deepseek/deepseek-chat");
   } catch (err) {
     console.error(`[Coding Agent] Code generation LLM call failed: ${err.message}`);
     return {
@@ -157,6 +160,7 @@ Rules:
   return {
     aiResponse: `✅ Code generated successfully! Here are the files:\n${fileList}\n\nOpen the Artifact Panel to view and copy each file.`,
     artifacts: [{ type: "code_generation", files }],
+    usage,
   };
 }
 
@@ -225,9 +229,11 @@ Use proper Markdown with headings, tables where useful, and code examples.`,
 
   try {
     const response = await llm.invoke(messages);
+    const usage = extractTokenUsage(response, "deepseek/deepseek-chat");
     return {
       aiResponse: String(response.content),
       artifacts: [],
+      usage,
     };
   } catch (err) {
     console.error(`[Coding Agent] ${intent} LLM call failed: ${err.message}`);
@@ -261,5 +267,6 @@ export const codingAgent = async (state) => {
     aiResponse: result.aiResponse,
     artifacts: result.artifacts,
     images: state.images || [],
+    ...(result.usage ? { usage: result.usage } : {}),
   };
 };

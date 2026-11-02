@@ -1,8 +1,9 @@
 import express from "express";
 import connectDb from "./config/db.js";
 import "dotenv/config";
-import authRouter from "./routes/auth.route.js"
-
+import authRouter from "./routes/auth.route.js";
+import creditRouter from "./routes/credit.route.js";
+import usageRouter from "./routes/usage.route.js";
 
 const app = express();
 app.use(express.json());
@@ -14,8 +15,19 @@ try {
   process.exit(1);
 }
 
-app.use("/auth",authRouter)
+// Authentication routes
+app.use("/auth", authRouter);
 
-app.listen(process.env.PORT, () => {
-  console.log("Hello from auth service");
+// Credit management routes
+app.use("/auth/credits", creditRouter);
+app.use("/credits", creditRouter);
+
+// Token usage tracking routes
+app.use("/auth/usage", usageRouter);
+app.use("/usage", usageRouter);
+
+const PORT = process.env.PORT || 8001;
+
+app.listen(PORT, () => {
+  console.log(`Auth & Credit service running on port ${PORT}`);
 });

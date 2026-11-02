@@ -3,6 +3,7 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { getModel } from "../config/llmModels.js";
 import { generatePpt } from "../utils/generatePpt.js";
 import { uploadImage } from "../utils/cloudinaryUpload.js";
+import { extractTokenUsage } from "../utils/extractTokens.js";
 
 // ── Configuration ──────────────────────────────────────────────────────────────
 
@@ -67,9 +68,11 @@ async function generatePresentationContent(userPrompt) {
   ];
 
   let raw;
+  let usage = null;
   try {
     const response = await llm.invoke(messages);
     raw = String(response.content).trim();
+    usage = extractTokenUsage(response, "openai/gpt-oss-120b");
   } catch (err) {
     throw new Error(`LLM invocation failed: ${err.message}`);
   }
@@ -156,6 +159,7 @@ async function generatePresentationContent(userPrompt) {
     title:    parsed.title.trim(),
     subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle.trim() : "",
     slides:   finalSlides,
+    usage,
   };
 }
 
@@ -289,5 +293,6 @@ ${slideSummary}
       ...(Array.isArray(state.artifacts) ? state.artifacts : []),
       pptArtifact,
     ],
+    ...(presContent?.usage ? { usage: presContent.usage } : {}),
   };
 };

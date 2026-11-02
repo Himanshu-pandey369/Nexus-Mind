@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { clearUser } from "../redux/userSlice";
+import { fetchCreditBalance } from "../redux/creditsSlice";
 import api from "../../utils/axios";
+import CreditModal from "./CreditModal";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -40,10 +42,17 @@ export default function Sidebar({
 }) {
   const dispatch = useDispatch();
   const { userData } = useSelector((state) => state.user);
+  const { balance } = useSelector((state) => state.credits);
 
   const [conversations, setConversations] = useState([]);
   const [convLoading, setConvLoading] = useState(false);
   const [convError, setConvError] = useState(null);
+  const [creditModalOpen, setCreditModalOpen] = useState(false);
+
+  // Fetch credits on mount
+  useEffect(() => {
+    dispatch(fetchCreditBalance());
+  }, [dispatch]);
 
   // Fetch conversation list whenever refreshTrigger changes
   useEffect(() => {
@@ -205,8 +214,27 @@ export default function Sidebar({
         })}
       </div>
 
-      {/* ── User profile footer ── */}
-      <div className="shrink-0 border-t border-slate-800 p-3">
+      {/* ── User profile footer & Credits ── */}
+      <div className="shrink-0 border-t border-slate-800 p-3 space-y-2">
+        {/* Credits pill button */}
+        <button
+          type="button"
+          onClick={() => setCreditModalOpen(true)}
+          className="flex w-full items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-950/40 px-2.5 py-1.5 text-xs text-indigo-300 transition hover:bg-indigo-900/50 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        >
+          <span className="flex items-center gap-1.5 font-medium">
+            <span className="text-amber-400">⚡</span>
+            <span>
+              {typeof balance === "number"
+                ? `${balance.toLocaleString()} credits`
+                : "Loading credits..."}
+            </span>
+          </span>
+          <span className="text-[10px] uppercase font-semibold text-indigo-400 hover:text-indigo-200">
+            Buy / Details →
+          </span>
+        </button>
+
         <div className="flex items-center gap-3">
           {userData?.photoURL ? (
             <img
@@ -238,6 +266,11 @@ export default function Sidebar({
           </button>
         </div>
       </div>
+
+      <CreditModal
+        isOpen={creditModalOpen}
+        onClose={() => setCreditModalOpen(false)}
+      />
     </aside>
   );
 }

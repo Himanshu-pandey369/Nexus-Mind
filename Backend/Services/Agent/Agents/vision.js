@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getModel } from "../config/llmModels.js";
 import { uploadImage } from "../utils/cloudinaryUpload.js";
+import { extractTokenUsage } from "../utils/extractTokens.js";
 
 // ── Cloudflare Workers AI Configuration ──────────────────────────────────────
 
@@ -53,12 +54,13 @@ Rules:
 
   const response = await llm.invoke(messages);
   const enhanced = String(response.content).trim();
+  const usage = extractTokenUsage(response, "openai/gpt-oss-120b");
 
   if (!enhanced) {
     throw new Error("LLM returned an empty prompt enhancement");
   }
 
-  return enhanced;
+  return { enhanced, usage };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -289,8 +291,11 @@ export const visionAgent = async (state) => {
 
   // ── 1. Enhance the user's prompt ────────────────────────────────────────────
   let generationPrompt = rawPrompt;
+  let promptUsage = null;
   try {
-    generationPrompt = await enhancePrompt(rawPrompt);
+    const enhancement = await enhancePrompt(rawPrompt);
+    generationPrompt = enhancement.enhanced;
+    promptUsage = enhancement.usage;
     console.log(`[Vision Agent] Enhanced prompt: "${generationPrompt}"`);
   } catch (err) {
     console.warn(
@@ -345,5 +350,6 @@ export const visionAgent = async (state) => {
     aiResponse:
       "✅ Here is your generated image! I used Cloudflare Workers AI (FLUX.1 Schnell) to create it based on your request.",
     images: [...(Array.isArray(state?.images) ? state.images : []), imageUrl],
+    ...(promptUsage ? { usage: promptUsage } : {}),
   };
 };

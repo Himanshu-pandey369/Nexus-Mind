@@ -31,7 +31,8 @@ export const googleAuth = async (req, res) => {
       userID:user._id,
       name:user.name,
       email:user.email,
-      avatar:user.avatar
+      avatar:user.avatar,
+      credits:user.credits ?? 1000,
     }),"EX",5 * 24 * 60 * 60 * 1000)
     
     res.cookie("session", sessionID, {
@@ -50,6 +51,7 @@ export const googleAuth = async (req, res) => {
         name: user.name,
         email: user.email,
         avatar: user.avatar,
+        credits: user.credits ?? 1000,
       },
     });
   } catch (error) {
