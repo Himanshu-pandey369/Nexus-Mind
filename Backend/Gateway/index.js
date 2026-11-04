@@ -19,6 +19,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 app.use(cookieParser());
 
+app.set("etag", false);
 app.post("/test", (req, res) => {
   console.log("Gateway test route reached");
 

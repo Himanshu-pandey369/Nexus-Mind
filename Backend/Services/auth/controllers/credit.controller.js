@@ -24,6 +24,7 @@ export const getBalance = async (req, res) => {
     }
 
     const balance = await creditService.getCreditBalance(userId);
+    res.set("Cache-Control", "no-store");
     return res.status(200).json({
       success: true,
       balance,
@@ -81,6 +82,7 @@ export const getHistory = async (req, res) => {
 export const reserveCredits = async (req, res) => {
   try {
     if (!verifyInternalSecret(req)) {
+      console.warn("[Credit Controller] reserveCredits: Invalid internal secret");
       return res.status(403).json({
         success: false,
         message: "Forbidden: Invalid internal secret",
@@ -94,6 +96,10 @@ export const reserveCredits = async (req, res) => {
         message: "userId and amount are required",
       });
     }
+
+    console.log(
+      `[Credit Controller] reserveCredits: userId=${userId}, amount=${amount}`
+    );
 
     const result = await creditService.reserveCredits(
       userId,
@@ -130,6 +136,7 @@ export const reserveCredits = async (req, res) => {
 export const commitCredits = async (req, res) => {
   try {
     if (!verifyInternalSecret(req)) {
+      console.warn("[Credit Controller] commitCredits: Invalid internal secret");
       return res.status(403).json({
         success: false,
         message: "Forbidden: Invalid internal secret",
@@ -143,6 +150,10 @@ export const commitCredits = async (req, res) => {
         message: "reservationId and userId are required",
       });
     }
+
+    console.log(
+      `[Credit Controller] commitCredits: reservationId=${reservationId}, userId=${userId}, actualAmount=${actualAmount}`
+    );
 
     const result = await creditService.commitCredits(
       reservationId,
@@ -172,6 +183,7 @@ export const commitCredits = async (req, res) => {
 export const refundCredits = async (req, res) => {
   try {
     if (!verifyInternalSecret(req)) {
+      console.warn("[Credit Controller] refundCredits: Invalid internal secret");
       return res.status(403).json({
         success: false,
         message: "Forbidden: Invalid internal secret",
@@ -185,6 +197,10 @@ export const refundCredits = async (req, res) => {
         message: "reservationId and userId are required",
       });
     }
+
+    console.log(
+      `[Credit Controller] refundCredits: reservationId=${reservationId}, userId=${userId}`
+    );
 
     const result = await creditService.refundCredits(
       reservationId,

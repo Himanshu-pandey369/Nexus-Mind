@@ -1,13 +1,13 @@
 import axios from "axios";
 
-const AUTH_SERVICE_URL =
+const getAuthServiceUrl = () =>
   process.env.AUTH_SERVICE_URL || "http://localhost:8001";
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "";
 
 const getInternalHeaders = () => {
+  const secret = process.env.INTERNAL_SECRET || "";
   const headers = { "Content-Type": "application/json" };
-  if (INTERNAL_SECRET) {
-    headers["x-internal-secret"] = INTERNAL_SECRET;
+  if (secret) {
+    headers["x-internal-secret"] = secret;
   }
   return headers;
 };
@@ -17,11 +17,16 @@ const getInternalHeaders = () => {
  * @param {string} userId
  * @param {number} amount
  * @param {string} [description]
- * @returns {Promise<{ reservationId: string, balanceAfter: number }>}
+ * @returns {Promise<{ reservationId: string, balanceBefore?: number, balanceAfter: number }>}
  */
 export async function reserveCredits(userId, amount, description = "") {
+  const url = `${getAuthServiceUrl()}/auth/credits/reserve`;
+  console.log(
+    `[Credit Client] Calling reserveCredits at ${url} for userId: ${userId}, amount: ${amount}`
+  );
+
   const response = await axios.post(
-    `${AUTH_SERVICE_URL}/auth/credits/reserve`,
+    url,
     { userId, amount, description },
     { headers: getInternalHeaders() }
   );
@@ -43,8 +48,13 @@ export async function commitCredits(
   actualAmount = null,
   description = ""
 ) {
+  const url = `${getAuthServiceUrl()}/auth/credits/commit`;
+  console.log(
+    `[Credit Client] Calling commitCredits at ${url} for reservationId: ${reservationId}, userId: ${userId}, actualAmount: ${actualAmount}`
+  );
+
   const response = await axios.post(
-    `${AUTH_SERVICE_URL}/auth/credits/commit`,
+    url,
     { reservationId, userId, actualAmount, description },
     { headers: getInternalHeaders() }
   );
@@ -60,8 +70,13 @@ export async function commitCredits(
  * @returns {Promise<{ balance: number, transaction: object }>}
  */
 export async function refundCredits(reservationId, userId, description = "") {
+  const url = `${getAuthServiceUrl()}/auth/credits/refund`;
+  console.log(
+    `[Credit Client] Calling refundCredits at ${url} for reservationId: ${reservationId}, userId: ${userId}`
+  );
+
   const response = await axios.post(
-    `${AUTH_SERVICE_URL}/auth/credits/refund`,
+    url,
     { reservationId, userId, description },
     { headers: getInternalHeaders() }
   );
@@ -85,7 +100,8 @@ export async function refundCredits(reservationId, userId, description = "") {
  */
 export async function recordUsage(data) {
   try {
-    await axios.post(`${AUTH_SERVICE_URL}/auth/usage/record`, data, {
+    const url = `${getAuthServiceUrl()}/auth/usage/record`;
+    await axios.post(url, data, {
       headers: getInternalHeaders(),
     });
   } catch (err) {
@@ -94,3 +110,4 @@ export async function recordUsage(data) {
     );
   }
 }
+

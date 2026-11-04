@@ -2,6 +2,39 @@ import mongoose from "mongoose";
 import User from "../models/user.model.js";
 import CreditTransaction from "../models/creditTransaction.model.js";
 import CreditReservation from "../models/creditReservation.model.js";
+import redis from "../../../Shared/redis/redis.js";
+
+/**
+ * Synchronize Redis session credits for the given user ID (best-effort, non-blocking).
+ * @param {string} userId
+ * @param {number} newBalance
+ */
+async function syncUserRedisSession(userId, newBalance) {
+  try {
+    if (!redis) return;
+    const targetId = userId.toString();
+    const keys = await redis.keys("session-*");
+    for (const key of keys) {
+      const dataStr = await redis.get(key);
+      if (dataStr) {
+        try {
+          const session = JSON.parse(dataStr);
+          if (session.userID === targetId) {
+            session.credits = newBalance;
+            const ttl = await redis.ttl(key);
+            if (ttl > 0) {
+              await redis.set(key, JSON.stringify(session), "EX", ttl);
+            } else {
+              await redis.set(key, JSON.stringify(session));
+            }
+          }
+        } catch (_) {}
+      }
+    }
+  } catch (err) {
+    console.warn("[Credit Service] Redis session sync warning (non-fatal):", err.message);
+  }
+}
 
 /**
  * Get authoritative credit balance from MongoDB.
@@ -92,6 +125,9 @@ export async function addCredits(
     description: description || `Credits added via ${source}`,
   });
 
+  // Sync Redis session if present
+  syncUserRedisSession(userId, balanceAfter).catch(() => {});
+
   return {
     balance: balanceAfter,
     transaction,
@@ -106,7 +142,7 @@ export async function addCredits(
  * @param {string} userId
  * @param {number} amount
  * @param {string} [description]
- * @returns {Promise<{ reservationId: string, balanceAfter: number }>}
+ * @returns {Promise<{ reservationId: string, balanceBefore: number, balanceAfter: number }>}
  */
 export async function reserveCredits(userId, amount, description = "") {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -118,6 +154,10 @@ export async function reserveCredits(userId, amount, description = "") {
     throw new Error("Reservation amount must be a positive number");
   }
 
+  console.log(
+    `[Credit Service] Reserve API called for user: ${userId}, requested amount: ${reserveAmount}`
+  );
+
   // Atomic condition: only deduct if credits >= reserveAmount
   const user = await User.findOneAndUpdate(
     { _id: userId, credits: { $gte: reserveAmount } },
@@ -126,13 +166,19 @@ export async function reserveCredits(userId, amount, description = "") {
   );
 
   if (!user) {
-    // Check if user exists or if balance was just insufficient
-    const exists = await User.exists({ _id: userId });
-    if (!exists) {
+    const existing = await User.findById(userId).select("credits").lean();
+    if (!existing) {
+      console.warn(`[Credit Service] User not found: ${userId}`);
       throw new Error("User not found");
     }
+    console.warn(
+      `[Credit Service] Insufficient credits for user ${userId}. Current balance: ${existing.credits}, required: ${reserveAmount}`
+    );
     throw new Error("Insufficient credits");
   }
+
+  const balanceAfter = user.credits;
+  const balanceBefore = balanceAfter + reserveAmount;
 
   // Create reservation record
   const reservation = await CreditReservation.create({
@@ -142,9 +188,17 @@ export async function reserveCredits(userId, amount, description = "") {
     description: description || "Agent execution reservation",
   });
 
+  // Sync Redis session with reserved balance
+  syncUserRedisSession(userId, balanceAfter).catch(() => {});
+
+  console.log(
+    `[Credit Service] Reservation created: ${reservation._id} for user ${userId}. Amount: ${reserveAmount}, balance before: ${balanceBefore}, balance after: ${balanceAfter}`
+  );
+
   return {
     reservationId: reservation._id.toString(),
-    balanceAfter: user.credits,
+    balanceBefore,
+    balanceAfter,
   };
 }
 
@@ -157,7 +211,7 @@ export async function reserveCredits(userId, amount, description = "") {
  * @param {string} userId
  * @param {number} [actualAmount]
  * @param {string} [description]
- * @returns {Promise<{ balance: number, transaction: object }>}
+ * @returns {Promise<{ balance: number, transaction: object, idempotent?: boolean }>}
  */
 export async function commitCredits(
   reservationId,
@@ -171,6 +225,10 @@ export async function commitCredits(
   if (!mongoose.Types.ObjectId.isValid(reservationId)) {
     throw new Error("Invalid reservation ID format");
   }
+
+  console.log(
+    `[Credit Service] Commit API called for reservation: ${reservationId}, user: ${userId}, actualAmount: ${actualAmount}`
+  );
 
   // Atomically claim the PENDING reservation to prevent concurrent double-commit/refund
   const reservation = await CreditReservation.findOneAndUpdate(
@@ -186,6 +244,34 @@ export async function commitCredits(
   );
 
   if (!reservation) {
+    // Check if this was already COMMITTED (idempotent retry protection)
+    const existing = await CreditReservation.findOne({
+      _id: reservationId,
+      userId,
+    }).lean();
+
+    if (existing && existing.status === "COMMITTED") {
+      const currentBalance = await getCreditBalance(userId);
+      const existingTx = await CreditTransaction.findOne({
+        referenceId: reservationId.toString(),
+      }).lean();
+      console.log(
+        `[Credit Service] Reservation ${reservationId} already committed (idempotent retry). Current balance: ${currentBalance}`
+      );
+      return {
+        balance: currentBalance,
+        transaction: existingTx,
+        idempotent: true,
+      };
+    }
+
+    if (existing && existing.status === "REFUNDED") {
+      console.warn(
+        `[Credit Service] Cannot commit reservation ${reservationId}: already refunded`
+      );
+      throw new Error("Reservation has already been refunded");
+    }
+
     throw new Error(
       "Reservation not found, already settled, or does not belong to this user"
     );
@@ -207,6 +293,20 @@ export async function commitCredits(
     await User.findByIdAndUpdate(userId, {
       $inc: { credits: refundedDifference },
     });
+  } else if (
+    actualAmount !== null &&
+    !isNaN(Number(actualAmount)) &&
+    Number(actualAmount) > reservation.amount
+  ) {
+    const extraDebit = Number(actualAmount) - reservation.amount;
+    const debitedUser = await User.findOneAndUpdate(
+      { _id: userId, credits: { $gte: extraDebit } },
+      { $inc: { credits: -extraDebit } },
+      { new: true, select: "credits" }
+    );
+    if (debitedUser) {
+      finalDebitAmount = Number(actualAmount);
+    }
   }
 
   const currentUser = await User.findById(userId).select("credits").lean();
@@ -229,6 +329,13 @@ export async function commitCredits(
       `Agent usage debit: ${finalDebitAmount} credits`,
   });
 
+  // Sync Redis session if Redis has active session for user
+  syncUserRedisSession(userId, balanceAfter).catch(() => {});
+
+  console.log(
+    `[Credit Service] Reservation ${reservationId} committed successfully. Final debit: ${finalDebitAmount}, balance before: ${balanceBefore}, balance after: ${balanceAfter}`
+  );
+
   return {
     balance: balanceAfter,
     transaction,
@@ -242,7 +349,7 @@ export async function commitCredits(
  * @param {string} reservationId
  * @param {string} userId
  * @param {string} [description]
- * @returns {Promise<{ balance: number, transaction: object }>}
+ * @returns {Promise<{ balance: number, transaction: object, idempotent?: boolean }>}
  */
 export async function refundCredits(reservationId, userId, description = "") {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
@@ -251,6 +358,10 @@ export async function refundCredits(reservationId, userId, description = "") {
   if (!mongoose.Types.ObjectId.isValid(reservationId)) {
     throw new Error("Invalid reservation ID format");
   }
+
+  console.log(
+    `[Credit Service] Refund API called for reservation: ${reservationId}, user: ${userId}, reason: ${description}`
+  );
 
   // Atomically claim the PENDING reservation
   const reservation = await CreditReservation.findOneAndUpdate(
@@ -266,6 +377,36 @@ export async function refundCredits(reservationId, userId, description = "") {
   );
 
   if (!reservation) {
+    // Check if this was already REFUNDED (idempotent retry protection)
+    const existing = await CreditReservation.findOne({
+      _id: reservationId,
+      userId,
+    }).lean();
+
+    if (existing && existing.status === "REFUNDED") {
+      const currentBalance = await getCreditBalance(userId);
+      const existingTx = await CreditTransaction.findOne({
+        referenceId: reservationId.toString(),
+      }).lean();
+      console.log(
+        `[Credit Service] Reservation ${reservationId} already refunded (idempotent retry). Current balance: ${currentBalance}`
+      );
+      return {
+        balance: currentBalance,
+        transaction: existingTx,
+        idempotent: true,
+      };
+    }
+
+    if (existing && existing.status === "COMMITTED") {
+      console.warn(
+        `[Credit Service] Cannot refund reservation ${reservationId}: already committed`
+      );
+      throw new Error(
+        "Reservation has already been committed and cannot be refunded"
+      );
+    }
+
     throw new Error(
       "Reservation not found, already settled, or does not belong to this user"
     );
@@ -298,6 +439,13 @@ export async function refundCredits(reservationId, userId, description = "") {
       description ||
       `Refund for failed execution (reservation: ${reservation._id})`,
   });
+
+  // Sync Redis session if Redis has active session for user
+  syncUserRedisSession(userId, balanceAfter).catch(() => {});
+
+  console.log(
+    `[Credit Service] Reservation ${reservationId} refunded successfully. Amount refunded: ${reservation.amount}, balance before: ${balanceBefore}, balance after: ${balanceAfter}`
+  );
 
   return {
     balance: balanceAfter,

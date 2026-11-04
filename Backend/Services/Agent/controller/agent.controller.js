@@ -24,6 +24,14 @@ export const agentChat = async (req, res) => {
   const { prompt, conversationId, agent } = req.body;
   const userId = req.headers["x-user-id"];
 
+  // Require authenticated user ID
+  if (!userId) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized: Missing user identification header",
+    });
+  }
+
   // --- 1. Input validation ---
   if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
     return res.status(400).json({
@@ -74,40 +82,46 @@ export const agentChat = async (req, res) => {
   // --- 3. Reserve credits before agent execution ---
   // If agent is "auto", reserve the maximum possible cost (10) since we don't
   // know the actual agent yet. If a specific agent is selected, reserve exact cost.
-  // Credit reservation is a soft dependency — if the credit service is unavailable,
-  // execution proceeds (logged as a warning). If credits are insufficient, fail fast.
+  // Fails fast if credits are insufficient or reservation cannot be established.
   const reserveCost = selectedAgent === "auto"
     ? MAX_AGENT_COST
     : (getAgentCost(selectedAgent) ?? MAX_AGENT_COST);
 
   let reservationId = null;
-  if (userId) {
-    try {
-      const reservation = await reserveCreditsClient(
-        userId,
-        reserveCost,
-        `${selectedAgent} agent request`
-      );
-      reservationId = reservation.reservationId;
-      console.log(
-        `[Agent Controller] Reserved ${reserveCost} credits for user ${userId}, reservation: ${reservationId}`
-      );
-    } catch (err) {
-      const status = err.response?.status;
-      const message = err.response?.data?.message || err.message;
+  console.log(
+    `[Agent Controller] Reserving ${reserveCost} credits for user: ${userId}, agent: ${selectedAgent}`
+  );
 
-      if (status === 402 || message === "Insufficient credits") {
-        return res.status(402).json({
-          success: false,
-          message: "Insufficient credits. Please top up your account to continue.",
-          requiredCredits: reserveCost,
-        });
-      }
-      // Credit service unavailable — proceed with a warning (soft failure)
-      console.warn(
-        `[Agent Controller] Credit reserve failed (non-fatal, continuing): ${message}`
-      );
+  try {
+    const reservation = await reserveCreditsClient(
+      userId,
+      reserveCost,
+      `${selectedAgent} agent request`
+    );
+    reservationId = reservation.reservationId;
+    console.log(
+      `[Agent Controller] Reserved ${reserveCost} credits for user ${userId}, reservation: ${reservationId}, balanceAfter: ${reservation.balanceAfter}`
+    );
+  } catch (err) {
+    const status = err.response?.status;
+    const message = err.response?.data?.message || err.message;
+    console.error(
+      `[Agent Controller] Credit reserve failed: ${message} (status: ${status})`
+    );
+
+    if (status === 402 || message === "Insufficient credits") {
+      return res.status(402).json({
+        success: false,
+        message: "Insufficient credits. Please top up your account to continue.",
+        requiredCredits: reserveCost,
+      });
     }
+
+    return res.status(status && status >= 400 && status < 600 ? status : 500).json({
+      success: false,
+      message: `Failed to reserve credits: ${message}`,
+      requiredCredits: reserveCost,
+    });
   }
 
   // --- 4. Invoke the LangGraph workflow ---
@@ -124,9 +138,21 @@ export const agentChat = async (req, res) => {
 
     // Refund reserved credits on graph failure
     if (reservationId && userId) {
-      refundCreditsClient(reservationId, userId, "Agent execution failed").catch((refundErr) =>
-        console.warn("[Agent Controller] Credit refund failed:", refundErr.message)
-      );
+      try {
+        const refundRes = await refundCreditsClient(
+          reservationId,
+          userId,
+          "Agent execution failed"
+        );
+        console.log(
+          `[Agent Controller] Refund successful for reservation ${reservationId}. Balance after refund: ${refundRes.balance}`
+        );
+      } catch (refundErr) {
+        console.error(
+          "[Agent Controller] Credit refund failed:",
+          refundErr.message
+        );
+      }
     }
 
     return res.status(500).json({
@@ -146,9 +172,18 @@ export const agentChat = async (req, res) => {
 
     // Refund reserved credits — no useful output produced
     if (reservationId && userId) {
-      refundCreditsClient(reservationId, userId, "No AI response produced").catch((err) =>
-        console.warn("[Agent Controller] Credit refund failed:", err.message)
-      );
+      try {
+        const refundRes = await refundCreditsClient(
+          reservationId,
+          userId,
+          "No AI response produced"
+        );
+        console.log(
+          `[Agent Controller] Refund successful for reservation ${reservationId}. Balance after refund: ${refundRes.balance}`
+        );
+      } catch (err) {
+        console.error("[Agent Controller] Credit refund failed:", err.message);
+      }
     }
 
     return res.status(500).json({
@@ -173,9 +208,21 @@ export const agentChat = async (req, res) => {
 
     // Refund credits — message persistence failed
     if (reservationId && userId) {
-      refundCreditsClient(reservationId, userId, "Message persistence failed").catch((refundErr) =>
-        console.warn("[Agent Controller] Credit refund failed:", refundErr.message)
-      );
+      try {
+        const refundRes = await refundCreditsClient(
+          reservationId,
+          userId,
+          "Message persistence failed"
+        );
+        console.log(
+          `[Agent Controller] Refund successful for reservation ${reservationId}. Balance after refund: ${refundRes.balance}`
+        );
+      } catch (refundErr) {
+        console.error(
+          "[Agent Controller] Credit refund failed:",
+          refundErr.message
+        );
+      }
     }
 
     return res.status(502).json({
@@ -199,6 +246,9 @@ export const agentChat = async (req, res) => {
   if (reservationId && userId) {
     try {
       const actualCost = getAgentCost(actualAgent);
+      console.log(
+        `[Agent Controller] Committing reservation ${reservationId} for user ${userId}, actualAgent: ${actualAgent}, actualCost: ${actualCost}`
+      );
       const commitRes = await commitCreditsClient(
         reservationId,
         userId,
@@ -206,8 +256,14 @@ export const agentChat = async (req, res) => {
         `${actualAgent} agent completed (${actualCost} credits)`
       );
       remainingBalance = commitRes?.balance ?? null;
+      console.log(
+        `[Agent Controller] Commit successful for reservation ${reservationId}. Balance after commit: ${remainingBalance}`
+      );
     } catch (err) {
-      console.warn("[Agent Controller] Credit commit failed (non-fatal):", err.message);
+      console.error(
+        "[Agent Controller] Credit commit failed:",
+        err.message
+      );
     }
   }
 

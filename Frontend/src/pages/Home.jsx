@@ -187,9 +187,8 @@ export default function Home() {
       // Synchronize updated credit balance
       if (typeof res.data.credits === "number") {
         dispatch(setCreditBalance(res.data.credits));
-      } else {
-        dispatch(fetchCreditBalance());
       }
+      dispatch(fetchCreditBalance());
 
       if (isFirstMessage) {
         setSidebarRefresh((n) => n + 1);
