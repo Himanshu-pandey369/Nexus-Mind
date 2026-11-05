@@ -1,7 +1,9 @@
+import fs from "fs";
 import axios from "axios";
 import { graph } from "../graph/graph.js";
 import { getMemory, addMemory } from "../config/memory.js";
 import cloudinary from "../config/cloudinary.js";
+import { uploadImage } from "../utils/cloudinaryUpload.js";
 import { getAgentCost } from "../config/agentPricing.js";
 import {
   reserveCredits as reserveCreditsClient,
@@ -11,7 +13,7 @@ import {
 } from "../utils/creditClient.js";
 
 const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
-const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision"];
+const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer"];
 
 // Maximum credit cost across all agents — used when agent is "auto"
 const MAX_AGENT_COST = 10;
@@ -23,48 +25,55 @@ const MAX_AGENT_COST = 10;
 export const agentChat = async (req, res) => {
   const { prompt, conversationId, agent } = req.body;
   const userId = req.headers["x-user-id"];
+  const tempFilePath = req.file?.path;
 
-  // Require authenticated user ID
-  if (!userId) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized: Missing user identification header",
-    });
-  }
-
-  // --- 1. Input validation ---
-  if (!prompt || typeof prompt !== "string" || prompt.trim() === "") {
-    return res.status(400).json({
-      success: false,
-      message: "prompt is required and must be a non-empty string",
-    });
-  }
-
-  if (
-    !conversationId ||
-    typeof conversationId !== "string" ||
-    conversationId.trim() === ""
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "conversationId is required and must be a non-empty string",
-    });
-  }
-
-  // Validate agent selection if provided
-  let selectedAgent = "auto";
-  if (agent !== undefined && agent !== null) {
-    if (typeof agent !== "string" || !VALID_AGENTS.includes(agent.trim().toLowerCase())) {
-      return res.status(400).json({
+  try {
+    // Require authenticated user ID
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        message: `Invalid agent requested. Must be one of: ${VALID_AGENTS.join(", ")}`,
+        message: "Unauthorized: Missing user identification header",
       });
     }
-    selectedAgent = agent.trim().toLowerCase();
-  }
 
-  const cleanPrompt = prompt.trim();
-  const cleanConvId = conversationId.trim();
+    // --- 1. Input validation ---
+    const rawPrompt = typeof prompt === "string" ? prompt.trim() : "";
+    const cleanPrompt = rawPrompt || (req.file ? "Analyze this image" : "");
+
+    if (!cleanPrompt) {
+      return res.status(400).json({
+        success: false,
+        message: "prompt is required and must be a non-empty string",
+      });
+    }
+
+    if (
+      !conversationId ||
+      typeof conversationId !== "string" ||
+      conversationId.trim() === ""
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "conversationId is required and must be a non-empty string",
+      });
+    }
+
+    // Validate agent selection if provided
+    let selectedAgent = req.file ? "imageAnalyzer" : "auto";
+    if (agent !== undefined && agent !== null) {
+      const normalizedAgent = agent.trim().toLowerCase();
+      const matched = VALID_AGENTS.find((a) => a.toLowerCase() === normalizedAgent);
+      if (typeof agent !== "string" || !matched) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid agent requested. Must be one of: ${VALID_AGENTS.join(", ")}`,
+        });
+      }
+      // If a file is uploaded, imageAnalyzer is the dedicated agent
+      selectedAgent = req.file ? "imageAnalyzer" : matched;
+    }
+
+    const cleanConvId = conversationId.trim();
 
   // --- 2. Load existing conversation history from Redis or Chat Service ---
   let history = [];
@@ -127,11 +136,21 @@ export const agentChat = async (req, res) => {
   // --- 4. Invoke the LangGraph workflow ---
   let result;
   try {
+    const filePayload = req.file
+      ? {
+          path: req.file.path,
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+        }
+      : null;
+
     result = await graph.invoke({
       prompt: cleanPrompt,
       conversationId: cleanConvId,
       history,
       agent: selectedAgent,
+      file: filePayload,
     });
   } catch (err) {
     console.error("[Agent Controller] Graph invocation error:", err.message);
@@ -194,9 +213,26 @@ export const agentChat = async (req, res) => {
 
   // --- 6. Persist user message and assistant response to Chat Service ---
   try {
+    let userImages = [];
+    if (req.file && tempFilePath) {
+      try {
+        const fileBuffer = await fs.promises.readFile(tempFilePath);
+        const uploadRes = await uploadImage(fileBuffer, { folder: "nexusmind/user-uploads" });
+        if (uploadRes?.secure_url) {
+          userImages.push(uploadRes.secure_url);
+        }
+      } catch (uploadErr) {
+        console.warn("[Agent Controller] Failed to upload user image to Cloudinary:", uploadErr.message);
+      }
+    }
+
     await axios.post(
       `${CHAT_SERVICE_URL}/chat/conversations/${cleanConvId}/messages`,
-      { role: "user", content: cleanPrompt }
+      {
+        role: "user",
+        content: cleanPrompt,
+        ...(userImages.length > 0 ? { images: userImages } : {}),
+      }
     );
     await axios.post(
       `${CHAT_SERVICE_URL}/chat/conversations/${cleanConvId}/messages`,
@@ -274,6 +310,8 @@ export const agentChat = async (req, res) => {
       usage.model ||
       (actualAgent === "coding"
         ? "deepseek/deepseek-chat"
+        : actualAgent === "imageAnalyzer"
+        ? process.env.GEMINI_MODEL || "gemini-3.1-flash-lite"
         : "openai/gpt-oss-120b");
     const inputTokens = usage.inputTokens || 0;
     const outputTokens = usage.outputTokens || 0;
@@ -299,6 +337,22 @@ export const agentChat = async (req, res) => {
     artifacts,
     credits: remainingBalance,
   });
+  } finally {
+    // --- 10. Clean up temporary files in a finally block, including on errors ---
+    if (tempFilePath) {
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          await fs.promises.unlink(tempFilePath);
+          console.log(`[Agent Controller] Cleaned up temporary file: ${tempFilePath}`);
+        }
+      } catch (cleanupErr) {
+        console.warn(
+          `[Agent Controller] Failed to delete temporary file ${tempFilePath}:`,
+          cleanupErr.message
+        );
+      }
+    }
+  }
 };
 
 /**

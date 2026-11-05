@@ -600,6 +600,15 @@ export default function MessageBubble({ message, onSelectArtifact }) {
         {isUser ? (
           /* ── User message: styled bubble ─────────────────────────── */
           <div className="rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
+            {images.length > 0 && (
+              <div className="mb-2 max-w-xs overflow-hidden rounded-lg">
+                <img
+                  src={images[0]}
+                  alt="Uploaded user attachment"
+                  className="max-h-60 w-auto rounded-lg object-contain"
+                />
+              </div>
+            )}
             {message.content}
           </div>
         ) : (

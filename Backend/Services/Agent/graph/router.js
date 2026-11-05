@@ -1,12 +1,23 @@
 import { getModel } from "../config/llmModels.js";
 
-const VALID_AGENTS = ["chat", "search", "coding", "pdf", "ppt", "vision"];
+const VALID_AGENTS = ["chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer"];
 
 export const router = async (state) => {
-  if (state.agent && state.agent !== "auto") {
+  // If an uploaded file is present, route immediately to imageAnalyzer
+  if (state.file) {
+    console.log(`[Router] Uploaded image detected (${state.file.originalname || "image"}) → Agent: "imageAnalyzer"`);
     return {
       ...state,
-      agent: state.agent,
+      agent: "imageAnalyzer",
+    };
+  }
+
+  if (state.agent && state.agent !== "auto") {
+    const normalized = state.agent.trim();
+    const matched = VALID_AGENTS.find((a) => a.toLowerCase() === normalized.toLowerCase());
+    return {
+      ...state,
+      agent: matched || state.agent,
     };
   }
   const llm = await getModel("router");
@@ -30,6 +41,7 @@ Agent selection rules:
    - General conversation and greetings.
    - Explanations, learning, and conceptual questions.
    - General knowledge that does not require current information.
+   - Questions asking to analyze, describe, or discuss an image when no image is uploaded.
 
 2. search:
    - Requests for current or real-time information.
@@ -52,8 +64,9 @@ Agent selection rules:
    - Preparing slides, presentation outlines, or slide content.
 
 6. vision:
-   - Requests to generate, draw, or edit images.
+   - Requests to generate, draw, or create images from text descriptions.
    - Creating illustrations, visual artwork, or image designs.
+   - Strictly for generating NEW images. Never select vision for questions asking to analyze, examine, or explain an image.
 
 Important rules:
 - Return only one word from this exact list: chat, search, coding, pdf, ppt, vision

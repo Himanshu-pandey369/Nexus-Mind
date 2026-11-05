@@ -33,6 +33,8 @@ export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [uploadError, setUploadError] = useState(null);
 
   // ── Artifact ──────────────────────────────────────────────────────────────
   // Coding agent artifacts: { type, files: [{ name, content }] }[]
@@ -64,6 +66,8 @@ export default function Home() {
     setConversationTitle("New Conversation");
     setPrompt("");
     setError(null);
+    setSelectedFile(null);
+    setUploadError(null);
   };
 
   // ── Load messages for a selected conversation ─────────────────────────────
@@ -127,12 +131,24 @@ export default function Home() {
   // ── Send a message ────────────────────────────────────────────────────────
   const handleSend = async () => {
     const trimmed = prompt.trim();
-    if (!trimmed || loading) return;
+    if ((!trimmed && !selectedFile) || loading) return;
 
     setError(null);
+    setUploadError(null);
+
+    const promptText = trimmed || "Analyze this image";
+    const fileToSend = selectedFile;
 
     // Optimistically add the user message
-    const optimisticMsg = { role: "user", content: trimmed };
+    let optimisticImages = [];
+    if (fileToSend) {
+      optimisticImages = [URL.createObjectURL(fileToSend)];
+    }
+    const optimisticMsg = {
+      role: "user",
+      content: promptText,
+      ...(optimisticImages.length > 0 ? { images: optimisticImages } : {}),
+    };
     setMessages((prev) => [...prev, optimisticMsg]);
     setPrompt("");
     setLoading(true);
@@ -147,7 +163,7 @@ export default function Home() {
         activeConvId = createRes.data.conversation._id;
         setConversationId(activeConvId);
 
-        const title = trimmed.slice(0, 60) + (trimmed.length > 60 ? "…" : "");
+        const title = promptText.slice(0, 60) + (promptText.length > 60 ? "…" : "");
         setConversationTitle(title);
 
         await api
@@ -156,7 +172,7 @@ export default function Home() {
             console.warn("Failed to set conversation title:", err.message);
           });
       } else if (messages.length === 0) {
-        const title = trimmed.slice(0, 60) + (trimmed.length > 60 ? "…" : "");
+        const title = promptText.slice(0, 60) + (promptText.length > 60 ? "…" : "");
         setConversationTitle(title);
         api
           .patch(`/chat/conversations/${activeConvId}/title`, { title })
@@ -164,16 +180,30 @@ export default function Home() {
           .catch(() => {});
       }
 
-      // POST /agent/chat — { prompt, conversationId, agent }
+      // POST /agent/chat — { prompt, conversationId, agent } or FormData with file
       // The Agent controller persists the user message to Chat Service internally,
       // so we do NOT double-save it here.
       const agentToSend = selectedAgentRef.current || selectedAgent || "auto";
 
-      const res = await api.post("/agent/chat", {
-        prompt: trimmed,
-        conversationId: activeConvId,
-        agent: agentToSend,
-      });
+      let res;
+      if (fileToSend) {
+        const formData = new FormData();
+        formData.append("prompt", promptText);
+        formData.append("conversationId", activeConvId);
+        formData.append("agent", agentToSend);
+        formData.append("file", fileToSend);
+
+        res = await api.post("/agent/chat", formData);
+      } else {
+        res = await api.post("/agent/chat", {
+          prompt: promptText,
+          conversationId: activeConvId,
+          agent: agentToSend,
+        });
+      }
+
+      // Clear the selected file on successful response
+      setSelectedFile(null);
 
       const aiText = res.data.aiResponse;
       const images = Array.isArray(res.data.images) ? res.data.images : [];
@@ -273,6 +303,11 @@ export default function Home() {
           onToggleArtifact={() => setArtifactOpen((o) => !o)}
           onSelectArtifact={handleSelectArtifact}
           artifactPanelOpen={artifactOpen}
+          selectedFile={selectedFile}
+          onFileChange={setSelectedFile}
+          onRemoveFile={() => setSelectedFile(null)}
+          uploadError={uploadError}
+          onUploadError={setUploadError}
         />
       </div>
 

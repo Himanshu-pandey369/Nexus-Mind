@@ -37,6 +37,11 @@ export default function ChatArea({
   onToggleArtifact,
   onSelectArtifact,
   artifactPanelOpen,
+  selectedFile,
+  onFileChange,
+  onRemoveFile,
+  uploadError,
+  onUploadError,
 }) {
   const handleAgentChange = onAgentSelect || onAgentChange;
   return (
@@ -99,6 +104,11 @@ export default function ChatArea({
         onSend={onSend}
         loading={loading}
         disabled={loading}
+        selectedFile={selectedFile}
+        onFileChange={onFileChange}
+        onRemoveFile={onRemoveFile}
+        uploadError={uploadError}
+        onUploadError={onUploadError}
       />
     </div>
   );

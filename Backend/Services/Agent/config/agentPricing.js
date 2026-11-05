@@ -10,6 +10,7 @@ export const AGENT_PRICING = {
   pdf: 10,
   ppt: 10,
   vision: 10,
+  imageAnalyzer: 5,
 };
 
 export const VALID_AGENTS = Object.keys(AGENT_PRICING);
@@ -26,13 +27,17 @@ export function getAgentCost(agent) {
   }
 
   const normalized = agent.trim().toLowerCase();
-  if (AGENT_PRICING[normalized] === undefined) {
+  const matchedKey = Object.keys(AGENT_PRICING).find(
+    (key) => key.toLowerCase() === normalized
+  );
+
+  if (!matchedKey || AGENT_PRICING[matchedKey] === undefined) {
     throw new Error(
       `Unknown agent: "${normalized}". Valid agents: ${VALID_AGENTS.join(", ")}`
     );
   }
 
-  return AGENT_PRICING[normalized];
+  return AGENT_PRICING[matchedKey];
 }
 
 /**
@@ -46,6 +51,14 @@ export const MODEL_TOKEN_PRICING = {
   "deepseek/deepseek-chat": {
     inputPerMillion: 0.14,
     outputPerMillion: 0.28,
+  },
+  "gemini-2.5-flash": {
+    inputPerMillion: 0.10,
+    outputPerMillion: 0.40,
+  },
+  "gemini-2.5": {
+    inputPerMillion: 0.10,
+    outputPerMillion: 0.40,
   },
   "gemini-3.8-flash": {
     inputPerMillion: 0.10,

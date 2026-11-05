@@ -54,6 +54,7 @@ app.use(
   "/agent",
   authMiddleware,
   proxy(process.env.AGENT_SERVICE, {
+    limit: "15mb",
     proxyReqPathResolver: (req) => `/agent${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;

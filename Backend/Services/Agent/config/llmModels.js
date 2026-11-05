@@ -6,9 +6,10 @@ const groq = new ChatGroq({
   model: "openai/gpt-oss-120b",
 });
 
-// Gemini — used for coding tasks
+// Gemini multimodal model — used for image analysis
+const geminiModel = process.env.GEMINI_MODEL || "gemini-3.1-flash-lite";
 const gemini = new ChatGoogleGenerativeAI({
-  model: "gemini-3.8-flash",
+  model: geminiModel,
 });
 
 const openrouter = new ChatOpenRouter({
@@ -19,6 +20,7 @@ const openrouter = new ChatOpenRouter({
 
 export const getModel = async (agent) => {
   if (agent === "coding") return openrouter;
+  if (agent === "imageAnalyzer") return gemini;
   // search, router, intent classification, and everything else → groq (fast & cheap)
   if (agent === "chat") return groq;
   if (agent === "vision") return groq; // prompt enhancement for image generation

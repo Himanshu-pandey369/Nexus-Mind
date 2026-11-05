@@ -8,6 +8,8 @@ export const agentState = Annotation.Root({
   history: Annotation(),
   searchResult: Annotation(),
   images: Annotation(),
+  // file: metadata & temp path of uploaded file for multimodal analysis
+  file: Annotation(),
   // artifacts: structured project files produced by the Coding Agent
   // [ { type: "code_generation", files: [{ name, content }, ...] } ]
   artifacts: Annotation(),
