@@ -348,8 +348,10 @@ export const visionAgent = async (state) => {
   return {
     ...state,
     aiResponse:
-      "✅ Here is your generated image! I used Cloudflare Workers AI (FLUX.1 Schnell) to create it based on your request.",
+      "✅ Here is your generated image! based on your request.",
     images: [...(Array.isArray(state?.images) ? state.images : []), imageUrl],
     ...(promptUsage ? { usage: promptUsage } : {}),
   };
 };
+
+

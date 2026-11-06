@@ -136,12 +136,18 @@ export default function Home() {
     setError(null);
     setUploadError(null);
 
-    const promptText = trimmed || "Analyze this image";
     const fileToSend = selectedFile;
+    const isPdf = Boolean(
+      fileToSend &&
+        (fileToSend.type === "application/pdf" ||
+          fileToSend.name?.toLowerCase().endsWith(".pdf"))
+    );
+    const defaultPrompt = isPdf ? "Analyze this PDF" : "Analyze this image";
+    const promptText = trimmed || (fileToSend ? defaultPrompt : "");
 
     // Optimistically add the user message
     let optimisticImages = [];
-    if (fileToSend) {
+    if (fileToSend && !isPdf && fileToSend.type?.startsWith("image/")) {
       optimisticImages = [URL.createObjectURL(fileToSend)];
     }
     const optimisticMsg = {

@@ -21,6 +21,7 @@ const openrouter = new ChatOpenRouter({
 export const getModel = async (agent) => {
   if (agent === "coding") return openrouter;
   if (agent === "imageAnalyzer") return gemini;
+  if (agent === "pdfRag") return groq;
   // search, router, intent classification, and everything else → groq (fast & cheap)
   if (agent === "chat") return groq;
   if (agent === "vision") return groq; // prompt enhancement for image generation

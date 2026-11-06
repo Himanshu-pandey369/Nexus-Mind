@@ -26,6 +26,15 @@ function CloseIcon() {
   );
 }
 
+function PdfFileIcon() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-6 w-6 text-red-400" aria-hidden="true">
+      <path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V7.875A1.875 1.875 0 0 0 18.375 6H15a2.25 2.25 0 0 1-2.25-2.25V1.5H5.625Z" />
+      <path d="M14.25 1.5v3.75c0 .414.336.75.75.75h3.75L14.25 1.5Z" />
+    </svg>
+  );
+}
+
 function formatFileSize(bytes) {
   if (!bytes) return "0 B";
   if (bytes < 1024) return `${bytes} B`;
@@ -88,14 +97,27 @@ export default function ChatInput({
     onChange(e.target.value);
   };
 
+  const isPdf = Boolean(
+    selectedFile &&
+      (selectedFile.type === "application/pdf" ||
+        selectedFile.name.toLowerCase().endsWith(".pdf"))
+  );
+
   const handleFileInputChange = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!validTypes.includes(file.type)) {
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+      "application/pdf",
+    ];
+    const fileIsPdf = file.name.toLowerCase().endsWith(".pdf");
+    if (!validTypes.includes(file.type) && !fileIsPdf) {
       if (onUploadError) {
-        onUploadError("Only image files (JPEG, PNG, WebP, GIF) are allowed.");
+        onUploadError("Only image files (JPEG, PNG, WebP, GIF) and PDF documents are allowed.");
       }
       e.target.value = "";
       return;
@@ -145,16 +167,33 @@ export default function ChatInput({
           </div>
         )}
 
-        {/* Selected image preview */}
-        {selectedFile && previewUrl && (
+        {/* Selected file preview */}
+        {selectedFile && (
           <div className="mb-2 flex items-center gap-3 rounded-lg border border-slate-700 bg-slate-900/90 p-2">
-            <img
-              src={previewUrl}
-              alt="Attachment preview"
-              className="h-12 w-12 rounded object-cover border border-slate-700 shrink-0"
-            />
+            {isPdf ? (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-red-500/30 bg-red-950/40">
+                <PdfFileIcon />
+              </div>
+            ) : previewUrl ? (
+              <img
+                src={previewUrl}
+                alt="Attachment preview"
+                className="h-12 w-12 rounded object-cover border border-slate-700 shrink-0"
+              />
+            ) : (
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-slate-700 bg-slate-800">
+                <PaperclipIcon />
+              </div>
+            )}
             <div className="flex-1 min-w-0">
-              <p className="truncate text-xs font-medium text-slate-200">{selectedFile.name}</p>
+              <div className="flex items-center gap-1.5">
+                {isPdf && (
+                  <span className="rounded bg-red-500/20 px-1 py-0.5 text-[10px] font-semibold text-red-400 uppercase tracking-wider">
+                    PDF
+                  </span>
+                )}
+                <p className="truncate text-xs font-medium text-slate-200">{selectedFile.name}</p>
+              </div>
               <p className="text-[11px] text-slate-400">{formatFileSize(selectedFile.size)}</p>
             </div>
             <button
@@ -175,10 +214,10 @@ export default function ChatInput({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/png,image/webp,image/gif,application/pdf"
             onChange={handleFileInputChange}
             className="hidden"
-            aria-label="Upload image"
+            aria-label="Upload file"
           />
 
           {/* Attachment button */}
@@ -186,8 +225,8 @@ export default function ChatInput({
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || loading}
-            title="Attach image"
-            aria-label="Attach image"
+            title="Attach image or PDF"
+            aria-label="Attach image or PDF"
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
           >
             <PaperclipIcon />
@@ -204,7 +243,9 @@ export default function ChatInput({
               disabled
                 ? "Starting conversation…"
                 : selectedFile
-                ? "Ask a question about this image… (Enter to send)"
+                ? isPdf
+                  ? "Ask a question about this PDF… (Enter to send)"
+                  : "Ask a question about this image… (Enter to send)"
                 : "Message NexusMind… (Enter to send, Shift+Enter for newline)"
             }
             disabled={disabled || loading}

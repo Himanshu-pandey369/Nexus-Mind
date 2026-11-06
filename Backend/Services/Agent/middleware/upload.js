@@ -87,27 +87,35 @@ const diskStorage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-    cb(null, `img-${uniqueSuffix}${ext}`);
+    const isPdf =
+      file.mimetype === "application/pdf" ||
+      file.originalname.toLowerCase().endsWith(".pdf");
+    const defaultExt = isPdf ? ".pdf" : ".jpg";
+    const ext = path.extname(file.originalname).toLowerCase() || defaultExt;
+    const prefix = isPdf ? "pdf" : "img";
+    cb(null, `${prefix}-${uniqueSuffix}${ext}`);
   },
 });
 
-const ALLOWED_IMAGE_MIMES = [
+const ALLOWED_CHAT_MIMES = [
   "image/jpeg",
   "image/png",
   "image/webp",
   "image/gif",
+  "application/pdf",
 ];
 
 export const chatUpload = multer({
   storage: diskStorage,
   limits: {
-    fileSize: 10 * 1024 * 1024, // 10 MB reasonable limit
+    fileSize: 10 * 1024 * 1024, // 10 MB limit
     files: 1,
   },
   fileFilter: (req, file, cb) => {
-    if (!ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {
-      const err = new Error("Only valid image files (JPEG, PNG, WebP, GIF) are allowed");
+    if (!ALLOWED_CHAT_MIMES.includes(file.mimetype)) {
+      const err = new Error(
+        "Only valid image files (JPEG, PNG, WebP, GIF) and PDF documents are allowed"
+      );
       err.code = "INVALID_FILE_TYPE";
       return cb(err, false);
     }
@@ -116,19 +124,30 @@ export const chatUpload = multer({
 });
 
 /**
- * Validates file signature (magic bytes) for common image formats:
+ * Validates file signature (magic bytes) for common image formats and PDFs:
+ * - PDF:  25 50 44 46 (%PDF)
  * - JPEG: FF D8 FF
  * - PNG:  89 50 4E 47 0D 0A 1A 0A
  * - GIF:  47 49 46 38
  * - WebP: 52 49 46 46 (RIFF) ... 57 45 42 50 (WEBP)
  */
-export async function validateImageSignature(filePath) {
+export async function validateFileSignature(filePath) {
   let fileHandle = null;
   try {
     fileHandle = await fs.promises.open(filePath, "r");
     const buffer = Buffer.alloc(12);
     const { bytesRead } = await fileHandle.read(buffer, 0, 12, 0);
     if (bytesRead < 4) return false;
+
+    // PDF: %PDF (25 50 44 46)
+    if (
+      buffer[0] === 0x25 &&
+      buffer[1] === 0x50 &&
+      buffer[2] === 0x44 &&
+      buffer[3] === 0x46
+    ) {
+      return true;
+    }
 
     // JPEG: FF D8 FF
     if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
@@ -181,8 +200,11 @@ export async function validateImageSignature(filePath) {
   }
 }
 
+// Preserve backwards-compatible alias
+export const validateImageSignature = validateFileSignature;
+
 /**
- * Middleware for single image upload on chat route.
+ * Middleware for single file upload (image or PDF) on chat route.
  * Handles both multipart/form-data and application/json requests transparently.
  * Validates file size, MIME type, and file signature.
  */
@@ -213,7 +235,7 @@ export const handleChatUpload = (req, res, next) => {
 
     // If file was uploaded, validate its binary signature
     if (req.file && req.file.path) {
-      const isValid = await validateImageSignature(req.file.path);
+      const isValid = await validateFileSignature(req.file.path);
       if (!isValid) {
         try {
           if (fs.existsSync(req.file.path)) {
@@ -224,7 +246,7 @@ export const handleChatUpload = (req, res, next) => {
         }
         return res.status(400).json({
           success: false,
-          message: "Invalid image file: signature does not match image format",
+          message: "Invalid file: binary signature does not match supported format",
         });
       }
     }

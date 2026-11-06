@@ -1,10 +1,20 @@
 import { getModel } from "../config/llmModels.js";
 
-const VALID_AGENTS = ["chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer"];
+const VALID_AGENTS = ["chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer", "pdfRag"];
 
 export const router = async (state) => {
-  // If an uploaded file is present, route immediately to imageAnalyzer
+  // If an uploaded file is present, route based on file MIME type / extension
   if (state.file) {
+    const mime = (state.file.mimetype || "").toLowerCase();
+    const name = (state.file.originalname || "").toLowerCase();
+    if (mime === "application/pdf" || name.endsWith(".pdf")) {
+      console.log(`[Router] Uploaded PDF detected (${state.file.originalname || "document.pdf"}) → Agent: "pdfRag"`);
+      return {
+        ...state,
+        agent: "pdfRag",
+      };
+    }
+
     console.log(`[Router] Uploaded image detected (${state.file.originalname || "image"}) → Agent: "imageAnalyzer"`);
     return {
       ...state,

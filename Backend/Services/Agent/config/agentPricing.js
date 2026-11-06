@@ -11,6 +11,7 @@ export const AGENT_PRICING = {
   ppt: 10,
   vision: 10,
   imageAnalyzer: 5,
+  pdfRag: 5,
 };
 
 export const VALID_AGENTS = Object.keys(AGENT_PRICING);

@@ -74,6 +74,7 @@ const AGENTS = [
   { id: "search", label: "Search", description: "Real-time web search",           Icon: SearchIconSvg },
   { id: "coding", label: "Coding", description: "Code generation & debugging",    Icon: CodeIconSvg },
   { id: "pdf",    label: "PDF",    description: "Read & summarise PDF documents", Icon: PdfIconSvg  },
+  { id: "pdfRag", label: "PDF RAG", description: "Chat & search in PDF documents", Icon: PdfIconSvg },
   { id: "ppt",    label: "PPT",    description: "Generate presentation slides",   Icon: PptIconSvg  },
   { id: "vision", label: "Image",  description: "Generate or analyse images",     Icon: ImageIconSvg },
 ];

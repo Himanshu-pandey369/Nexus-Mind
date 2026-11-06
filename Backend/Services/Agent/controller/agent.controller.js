@@ -13,7 +13,15 @@ import {
 } from "../utils/creditClient.js";
 
 const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
-const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer"];
+const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer", "pdfRag"];
+
+// Helper to determine if an uploaded file is a PDF
+const isPdfUpload = (file) => {
+  if (!file) return false;
+  const mime = (file.mimetype || "").toLowerCase();
+  const name = (file.originalname || "").toLowerCase();
+  return mime === "application/pdf" || name.endsWith(".pdf");
+};
 
 // Maximum credit cost across all agents — used when agent is "auto"
 const MAX_AGENT_COST = 10;
@@ -37,8 +45,9 @@ export const agentChat = async (req, res) => {
     }
 
     // --- 1. Input validation ---
+    const isPdf = isPdfUpload(req.file);
     const rawPrompt = typeof prompt === "string" ? prompt.trim() : "";
-    const cleanPrompt = rawPrompt || (req.file ? "Analyze this image" : "");
+    const cleanPrompt = rawPrompt || (req.file ? (isPdf ? "Analyze this PDF" : "Analyze this image") : "");
 
     if (!cleanPrompt) {
       return res.status(400).json({
@@ -59,7 +68,7 @@ export const agentChat = async (req, res) => {
     }
 
     // Validate agent selection if provided
-    let selectedAgent = req.file ? "imageAnalyzer" : "auto";
+    let selectedAgent = req.file ? (isPdf ? "pdfRag" : "imageAnalyzer") : "auto";
     if (agent !== undefined && agent !== null) {
       const normalizedAgent = agent.trim().toLowerCase();
       const matched = VALID_AGENTS.find((a) => a.toLowerCase() === normalizedAgent);
@@ -69,8 +78,8 @@ export const agentChat = async (req, res) => {
           message: `Invalid agent requested. Must be one of: ${VALID_AGENTS.join(", ")}`,
         });
       }
-      // If a file is uploaded, imageAnalyzer is the dedicated agent
-      selectedAgent = req.file ? "imageAnalyzer" : matched;
+      // If a file is uploaded, route to dedicated agent based on file type
+      selectedAgent = req.file ? (isPdf ? "pdfRag" : "imageAnalyzer") : matched;
     }
 
     const cleanConvId = conversationId.trim();
@@ -148,6 +157,7 @@ export const agentChat = async (req, res) => {
     result = await graph.invoke({
       prompt: cleanPrompt,
       conversationId: cleanConvId,
+      userId,
       history,
       agent: selectedAgent,
       file: filePayload,
@@ -214,7 +224,7 @@ export const agentChat = async (req, res) => {
   // --- 6. Persist user message and assistant response to Chat Service ---
   try {
     let userImages = [];
-    if (req.file && tempFilePath) {
+    if (req.file && tempFilePath && !isPdfUpload(req.file)) {
       try {
         const fileBuffer = await fs.promises.readFile(tempFilePath);
         const uploadRes = await uploadImage(fileBuffer, { folder: "nexusmind/user-uploads" });
@@ -312,6 +322,8 @@ export const agentChat = async (req, res) => {
         ? "deepseek/deepseek-chat"
         : actualAgent === "imageAnalyzer"
         ? process.env.GEMINI_MODEL || "gemini-3.1-flash-lite"
+        : actualAgent === "pdfRag"
+        ? "openai/gpt-oss-120b"
         : "openai/gpt-oss-120b");
     const inputTokens = usage.inputTokens || 0;
     const outputTokens = usage.outputTokens || 0;
