@@ -5,6 +5,11 @@ import Sidebar from "../components/Sidebar";
 import ChatArea from "../components/ChatArea";
 import ArtifactPanel from "../components/ArtifactPanel";
 import { fetchCreditBalance, setCreditBalance } from "../redux/creditsSlice";
+import {
+  setLoading as setChatLoading,
+  setError as setChatError,
+  clearError as clearChatError,
+} from "../redux/chatSlice";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Home — top-level layout and shared state coordinator
@@ -68,6 +73,8 @@ export default function Home() {
     setError(null);
     setSelectedFile(null);
     setUploadError(null);
+    dispatch(setChatLoading(false));
+    dispatch(clearChatError());
   };
 
   // ── Load messages for a selected conversation ─────────────────────────────
@@ -111,6 +118,7 @@ export default function Home() {
       setError("Could not load conversation messages.");
     } finally {
       setLoading(false);
+      dispatch(setChatLoading(false));
     }
   };
 
@@ -135,6 +143,7 @@ export default function Home() {
 
     setError(null);
     setUploadError(null);
+    dispatch(clearChatError());
 
     const fileToSend = selectedFile;
     const isPdf = Boolean(
@@ -158,6 +167,7 @@ export default function Home() {
     setMessages((prev) => [...prev, optimisticMsg]);
     setPrompt("");
     setLoading(true);
+    dispatch(setChatLoading(true));
 
     let activeConvId = conversationId;
     const isFirstMessage = !activeConvId;
@@ -247,18 +257,21 @@ export default function Home() {
       }
     } catch (err) {
       if (err.response?.status === 402) {
-        setError(
-          "⚡ Insufficient credits to run this agent. Please top up your credits from the sidebar to continue."
-        );
+        const errorMsg =
+          "⚡ Insufficient credits to run this agent. Please top up your credits from the sidebar to continue.";
+        setError(errorMsg);
+        dispatch(setChatError(errorMsg));
       } else {
         const msg =
           err.response?.data?.message ||
           "Something went wrong. Please try again.";
         setError(msg);
+        dispatch(setChatError(msg));
       }
       // Optimistic message remains visible so the user knows what they sent.
     } finally {
       setLoading(false);
+      dispatch(setChatLoading(false));
     }
   };
 
@@ -266,18 +279,21 @@ export default function Home() {
   return (
     <div className="flex h-svh w-full overflow-hidden bg-slate-950">
       {/* ── Mobile sidebar overlay ───────────────────────────────────────── */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/60 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Always rendered but pointer-events / opacity toggled for smooth transition */}
+      <div
+        className={`fixed inset-0 z-20 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden ${
+          sidebarOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+        aria-hidden="true"
+      />
 
       {/* ── Left sidebar ─────────────────────────────────────────────────── */}
       {/*
         Desktop (lg+): always visible at 260px
-        Tablet/Mobile: slide-over drawer
+        Tablet/Mobile: slide-over drawer with smooth transition
       */}
       <div
         className={`fixed inset-y-0 left-0 z-30 w-[260px] transform transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:z-auto ${
@@ -289,6 +305,7 @@ export default function Home() {
           onSelectConversation={handleSelectConversation}
           onNewChat={handleNewChat}
           refreshTrigger={sidebarRefresh}
+          onClose={() => setSidebarOpen(false)}
         />
       </div>
 
@@ -318,19 +335,21 @@ export default function Home() {
       </div>
 
       {/* ── Right artifact panel ─────────────────────────────────────────── */}
-      {/* Mobile overlay */}
-      {artifactOpen && (
-        <div
-          className="fixed inset-0 z-20 bg-black/60 xl:hidden"
-          onClick={() => setArtifactOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile/tablet overlay backdrop */}
+      <div
+        className={`fixed inset-0 z-20 bg-black/60 backdrop-blur-sm transition-opacity duration-300 xl:hidden ${
+          artifactOpen
+            ? "opacity-100 pointer-events-auto"
+            : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setArtifactOpen(false)}
+        aria-hidden="true"
+      />
 
       <div
-        className={`fixed inset-y-0 right-0 z-30 w-[360px] transform transition-transform duration-300 ease-in-out xl:static xl:translate-x-0 xl:z-auto ${
+        className={`fixed inset-y-0 right-0 z-30 w-full max-w-[360px] transform transition-transform duration-300 ease-in-out xl:static xl:translate-x-0 xl:z-auto ${
           artifactOpen ? "translate-x-0" : "translate-x-full xl:hidden"
-        } xl:w-[360px] xl:shrink-0`}
+        } xl:w-[360px] xl:max-w-none xl:shrink-0`}
       >
         <ArtifactPanel
           artifact={artifact}

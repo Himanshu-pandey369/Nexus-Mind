@@ -1,6 +1,8 @@
+import { useSelector } from "react-redux";
 import AgentSelector from "./AgentSelector";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
+import getUserPlan from "../utils/userPlan";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -44,6 +46,8 @@ export default function ChatArea({
   onUploadError,
 }) {
   const handleAgentChange = onAgentSelect || onAgentChange;
+  const { userData } = useSelector((state) => state.user);
+  const userPlan = getUserPlan(userData);
   return (
     <div className="flex h-full flex-col bg-slate-950 min-w-0">
       {/* ── Chat header ── */}
@@ -67,6 +71,11 @@ export default function ChatArea({
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Dynamic User Plan Badge */}
+          <span className="hidden sm:inline-flex items-center rounded-full bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-indigo-300 border border-slate-700/60 select-none">
+            {userPlan} Plan
+          </span>
+
           {/* Agent selector */}
           <AgentSelector
             selectedAgent={selectedAgent}

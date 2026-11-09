@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
+import { useSelector } from "react-redux";
 import MessageBubble from "./MessageBubble";
+import LoadingIndicator from "./LoadingIndicator";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -28,39 +30,31 @@ function EmptyState() {
   );
 }
 
-// ── Typing indicator ──────────────────────────────────────────────────────────
-
-function TypingIndicator() {
-  return (
-    <div className="flex justify-start px-4">
-      <div className="flex items-center gap-2 rounded-2xl rounded-bl-sm bg-slate-800 px-4 py-3">
-        <span className="flex gap-1" aria-label="AI is typing">
-          <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.3s]" />
-          <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce [animation-delay:-0.15s]" />
-          <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" />
-        </span>
-      </div>
-    </div>
-  );
-}
-
 // ── MessageList ───────────────────────────────────────────────────────────────
 
 export default function MessageList({ messages, loading, error, onSelectArtifact }) {
-  const endRef = useRef(null);
+  const messagesEndRef = useRef(null);
   const containerRef = useRef(null);
 
-  // Smart auto-scroll: only scroll to bottom when near the bottom already
-  // (so users can read earlier messages without being jerked down)
+  // Synchronize loading state with Redux if available, falling back to props
+  const reduxLoading = useSelector((state) => state.chat?.loading ?? state.chat?.isLoading);
+  const reduxStatus = useSelector((state) => state.chat?.status);
+  const isGenerating = reduxLoading !== undefined ? reduxLoading : loading;
+
+  // Chapter 13: Auto-scroll to bottom on messages and loading state changes
+  // Uses requestAnimationFrame and scrollIntoView with smooth scrolling and block: "end"
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const { scrollTop, scrollHeight, clientHeight } = container;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 200;
-    if (isNearBottom) {
-      endRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, loading]);
+    const frameId = requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
+  }, [messages, isGenerating]);
 
   return (
     <div
@@ -69,7 +63,7 @@ export default function MessageList({ messages, loading, error, onSelectArtifact
       aria-live="polite"
       aria-label="Conversation messages"
     >
-      {messages.length === 0 && !loading && !error ? (
+      {messages.length === 0 && !isGenerating && !error ? (
         <EmptyState />
       ) : (
         <div className="mx-auto max-w-3xl space-y-2 px-4 py-6">
@@ -81,7 +75,7 @@ export default function MessageList({ messages, loading, error, onSelectArtifact
             />
           ))}
 
-          {loading && <TypingIndicator />}
+          {isGenerating && <LoadingIndicator currentStatus={reduxStatus} />}
 
           {error && (
             <div
@@ -93,7 +87,8 @@ export default function MessageList({ messages, loading, error, onSelectArtifact
             </div>
           )}
 
-          <div ref={endRef} />
+          {/* Bottom reference for automatic scrolling */}
+          <div ref={messagesEndRef} aria-hidden="true" />
         </div>
       )}
     </div>

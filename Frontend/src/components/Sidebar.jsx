@@ -4,6 +4,7 @@ import { clearUser } from "../redux/userSlice";
 import { fetchCreditBalance } from "../redux/creditsSlice";
 import api from "../../utils/axios";
 import CreditModal from "./CreditModal";
+import getUserPlan from "../utils/userPlan";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -39,10 +40,12 @@ export default function Sidebar({
   onSelectConversation,
   onNewChat,
   refreshTrigger,
+  onClose,
 }) {
   const dispatch = useDispatch();
   const { userData } = useSelector((state) => state.user);
   const { balance } = useSelector((state) => state.credits);
+  const userPlan = getUserPlan(userData);
 
   const [conversations, setConversations] = useState([]);
   const [convLoading, setConvLoading] = useState(false);
@@ -152,9 +155,26 @@ export default function Sidebar({
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-sm font-bold text-white select-none">
           N
         </div>
-        <span className="text-base font-semibold tracking-tight text-slate-100">
-          NexusMind
-        </span>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-base font-semibold tracking-tight text-slate-100">
+            NexusMind
+          </span>
+          <span className="text-[10px] text-indigo-400 font-medium">
+            {userPlan} Plan
+          </span>
+        </div>
+        {/* Close button — only visible on mobile when sidebar is open as drawer */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close sidebar"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:hidden"
+          >
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden="true">
+              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* ── New Chat button ── */}
@@ -249,9 +269,14 @@ export default function Sidebar({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-slate-200">
-              {userData?.name || "User"}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="truncate text-xs font-medium text-slate-200">
+                {userData?.name || "User"}
+              </p>
+              <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[9px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+                {userPlan}
+              </span>
+            </div>
             <p className="truncate text-xs text-slate-500">
               {userData?.email || ""}
             </p>

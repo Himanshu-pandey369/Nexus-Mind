@@ -115,7 +115,7 @@ function ProjectArtifact({ projectArtifacts }) {
   );
 
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const [tab, setTab] = useState("code");
+  const [tab, setTab] = useState("preview"); // Default to preview on all screens
 
   if (allFiles.length === 0) {
     return (
@@ -131,6 +131,9 @@ function ProjectArtifact({ projectArtifacts }) {
   // Preview is only offered when the project has an HTML file
   const htmlFile = allFiles.find((f) => f.name.toLowerCase().endsWith(".html"));
   const canPreview = Boolean(htmlFile);
+
+  // If we can't preview and tab is preview, fall back to code
+  const activeTab = tab === "preview" && !canPreview ? "code" : tab;
 
   // Build preview HTML by inlining CSS and JS into the HTML file
   const buildPreviewHtml = () => {
@@ -176,12 +179,12 @@ function ProjectArtifact({ projectArtifacts }) {
 
   return (
     <div className="flex h-full flex-col min-h-0">
-      {/* ── File list ── */}
+      {/* ── File list — horizontal scroll on mobile ── */}
       <div className="shrink-0 border-b border-slate-800 px-3 py-2">
         <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
           Files ({allFiles.length})
         </p>
-        <div className="flex flex-col gap-0.5">
+        <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto sm:max-h-none">
           {allFiles.map((file, idx) => (
             <button
               key={`${file.name}-${idx}`}
@@ -202,22 +205,11 @@ function ProjectArtifact({ projectArtifacts }) {
 
       {/* ── Code / Preview tabs ── */}
       <div className="flex shrink-0 gap-1 border-b border-slate-800 px-3 pt-2">
-        <button
-          onClick={() => setTab("code")}
-          className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-            tab === "code"
-              ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-              : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          <CodeBracketIcon className="h-3.5 w-3.5" />
-          Code
-        </button>
         {canPreview && (
           <button
             onClick={() => setTab("preview")}
             className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              tab === "preview"
+              activeTab === "preview"
                 ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
                 : "text-slate-400 hover:text-slate-200"
             }`}
@@ -226,22 +218,34 @@ function ProjectArtifact({ projectArtifacts }) {
             Preview
           </button>
         )}
+        <button
+          onClick={() => setTab("code")}
+          className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            activeTab === "code"
+              ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
+              : "text-slate-400 hover:text-slate-200"
+          }`}
+        >
+          <CodeBracketIcon className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">View </span>Code
+        </button>
       </div>
 
       {/* ── File content ── */}
-      {tab === "code" ? (
+      {activeTab === "code" ? (
         <div className="flex flex-1 flex-col min-h-0">
           {/* File header with name + copy */}
           <div className="flex shrink-0 items-center justify-between bg-slate-800/60 px-3 py-1.5">
-            <span className="font-mono text-[11px] text-slate-400 truncate">{currentFile.name}</span>
+            <span className="font-mono text-[11px] text-slate-400 truncate mr-2">{currentFile.name}</span>
             <CopyButton text={currentFile.content} />
           </div>
-          {/* Syntax-highlighted content */}
+          {/* Syntax-highlighted content — wraps on small screens */}
           <div className="flex-1 overflow-auto">
             <SyntaxHighlighter
               language={lang}
               style={oneDark}
               PreTag="div"
+              wrapLongLines={true}
               customStyle={{
                 margin: 0,
                 padding: "1rem",
@@ -249,6 +253,8 @@ function ProjectArtifact({ projectArtifacts }) {
                 fontSize: "0.75rem",
                 lineHeight: "1.6",
                 minHeight: "100%",
+                wordBreak: "break-word",
+                overflowWrap: "break-word",
               }}
               codeTagProps={{
                 style: { fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace" },
@@ -289,17 +295,6 @@ function LegacyCodeArtifact({ content }) {
       {(hasPreview) && (
         <div className="flex shrink-0 gap-1 border-b border-slate-800 px-3 pt-2">
           <button
-            onClick={() => setTab("code")}
-            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              tab === "code"
-                ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <CodeBracketIcon className="h-3.5 w-3.5" />
-            Code
-          </button>
-          <button
             onClick={() => setTab("preview")}
             className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               tab === "preview"
@@ -309,6 +304,17 @@ function LegacyCodeArtifact({ content }) {
           >
             <EyeIcon />
             Preview
+          </button>
+          <button
+            onClick={() => setTab("code")}
+            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              tab === "code"
+                ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
+                : "text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <CodeBracketIcon className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">View </span>Code
           </button>
         </div>
       )}
