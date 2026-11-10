@@ -1,8 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchCreditHistory } from "../redux/creditsSlice";
+import {
+  fetchCreditBalance,
+  fetchCreditHistory,
+  fetchPaymentHistory,
+  setCreditBalance,
+} from "../redux/creditsSlice";
+import { fetchCurrentUser } from "../redux/userSlice";
 import getUserPlan from "../utils/userPlan";
+import loadRazorpayScript from "../utils/loadRazorpay";
+import api from "../../utils/axios";
 
 function CoinsIcon() {
   return (
@@ -23,26 +31,102 @@ function CloseIcon() {
   );
 }
 
-const PRICING_TIERS = [
-  { name: "Starter", credits: 1000, price: "$5", popular: false },
-  { name: "Pro", credits: 5000, price: "$20", popular: true },
-  { name: "Enterprise", credits: 15000, price: "$50", popular: false },
+function LockIcon() {
+  return (
+    <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+      <path fillRule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1zm3 8V5.5a3 3 0 1 0-6 0V9h6z" clipRule="evenodd" />
+    </svg>
+  );
+}
+
+const DEFAULT_PACKAGES = [
+  {
+    id: "starter",
+    name: "Starter",
+    price: 449,
+    currency: "INR",
+    credits: 1000,
+    bonusCredits: 0,
+    popular: false,
+  },
+  {
+    id: "pro",
+    name: "Pro",
+    price: 1699,
+    currency: "INR",
+    credits: 5000,
+    bonusCredits: 500,
+    popular: true,
+  },
+  {
+    id: "enterprise",
+    name: "Enterprise",
+    price: 3999,
+    currency: "INR",
+    credits: 15000,
+    bonusCredits: 2000,
+    popular: false,
+  },
 ];
+
+function formatPrice(price, currency = "INR") {
+  if (currency === "INR") {
+    return `₹${price.toLocaleString("en-IN")}`;
+  }
+  return `$${price.toLocaleString()}`;
+}
 
 export default function CreditModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
-  const { balance, history, historyLoading } = useSelector(
-    (state) => state.credits
-  );
+  const {
+    balance,
+    paymentHistory,
+    paymentHistoryTotal,
+    paymentHistoryPage,
+    paymentHistoryTotalPages,
+    paymentHistoryLoading,
+    paymentHistoryError,
+  } = useSelector((state) => state.credits);
   const { userData } = useSelector((state) => state.user);
   const userPlan = getUserPlan(userData);
 
+  const [packages, setPackages] = useState(DEFAULT_PACKAGES);
+  const [purchasingPackageId, setPurchasingPackageId] = useState(null);
+  const [verifying, setVerifying] = useState(false);
+  const [retryingFulfillment, setRetryingFulfillment] = useState(false);
+  const [notice, setNotice] = useState(null);
+
+  // Fetch balance, payment transaction history, user data, and dynamic packages on open
   useEffect(() => {
     if (isOpen) {
-      dispatch(fetchCreditHistory({ page: 1, limit: 15 }));
+      dispatch(fetchCreditBalance());
+      dispatch(fetchCurrentUser());
+      dispatch(fetchPaymentHistory({ page: 1, limit: 10 }));
+
+      let isMounted = true;
+      api
+        .get("/payment/packages")
+        .then((res) => {
+          if (
+            isMounted &&
+            res.data?.success &&
+            Array.isArray(res.data.packages) &&
+            res.data.packages.length > 0
+          ) {
+            setPackages(res.data.packages);
+          }
+        })
+        .catch(() => {
+          // Fall back gracefully to DEFAULT_PACKAGES if packages endpoint fails
+        });
+
+      return () => {
+        isMounted = false;
+      };
     }
   }, [isOpen, dispatch]);
 
+  // Keyboard escape listener
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e) => {
@@ -51,6 +135,243 @@ export default function CreditModal({ isOpen, onClose }) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  // Retry credit fulfillment for a verified payment whose auth crediting was delayed
+  const handleRetryFulfillment = async (orderId) => {
+    setRetryingFulfillment(true);
+    try {
+      const res = await api.post("/payment/retry-fulfillment", { orderId });
+      if (res.data?.success) {
+        if (res.data.payment?.status === "fulfilled") {
+          setNotice({
+            type: "success",
+            message: `Credits successfully fulfilled! ${res.data.payment.credits?.toLocaleString() || ""} credits added.`,
+          });
+          if (typeof res.data.payment?.newBalance === "number") {
+            dispatch(setCreditBalance(res.data.payment.newBalance));
+          }
+          dispatch(fetchCreditBalance());
+          dispatch(fetchCurrentUser());
+          dispatch(fetchPaymentHistory({ page: paymentHistoryPage || 1, limit: 10 }));
+        } else {
+          setNotice({
+            type: "warning",
+            message: "Fulfillment is still processing. Please try again in a few seconds.",
+            retryAction: {
+              label: "Retry Again",
+              onClick: () => handleRetryFulfillment(orderId),
+            },
+          });
+        }
+      } else {
+        throw new Error(res.data?.message || "Failed to retry fulfillment");
+      }
+    } catch (err) {
+      setNotice({
+        type: "error",
+        message: err.response?.data?.message || "Retry failed. Please check back shortly.",
+        retryAction: {
+          label: "Retry Again",
+          onClick: () => handleRetryFulfillment(orderId),
+        },
+      });
+    } finally {
+      setRetryingFulfillment(false);
+    }
+  };
+
+  // Verify payment with backend after Razorpay checkout returns success
+  const verifyAndFulfillPayment = async (razorpayResponse, order) => {
+    setVerifying(true);
+    setNotice({
+      type: "info",
+      message: "Payment authorized! Verifying transaction with server...",
+    });
+
+    const payload = {
+      razorpay_order_id: razorpayResponse.razorpay_order_id,
+      razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+      razorpay_signature: razorpayResponse.razorpay_signature,
+    };
+
+    try {
+      const res = await api.post("/payment/verify", payload);
+
+      if (res.data?.success) {
+        const paymentData = res.data.payment;
+        const creditsAdded =
+          paymentData?.credits || (order.credits + (order.bonusCredits || 0));
+
+        if (
+          paymentData?.status === "fulfilled" ||
+          res.data.message?.includes("already verified")
+        ) {
+          // Successfully verified and fulfilled
+          setNotice({
+            type: "success",
+            message: `Payment successful! ${creditsAdded.toLocaleString()} credits have been added to your balance.`,
+          });
+
+          // Optimistically update balance if returned
+          if (typeof paymentData?.newBalance === "number") {
+            dispatch(setCreditBalance(paymentData.newBalance));
+          }
+
+          // Refresh balance, session user data, and payment transaction history from authoritative source
+          dispatch(fetchCreditBalance());
+          dispatch(fetchCurrentUser());
+          dispatch(fetchPaymentHistory({ page: 1, limit: 10 }));
+        } else if (paymentData?.status === "verified") {
+          // Signature valid, but auth service crediting is pending
+          setNotice({
+            type: "warning",
+            message:
+              "Payment verified successfully! Credit fulfillment is processing and will reflect shortly.",
+            retryAction: {
+              label: "Check Fulfillment",
+              onClick: () => handleRetryFulfillment(payload.razorpay_order_id),
+            },
+          });
+
+          // Schedule a delayed balance & user refresh
+          setTimeout(() => {
+            dispatch(fetchCreditBalance());
+            dispatch(fetchCurrentUser());
+            dispatch(fetchPaymentHistory({ page: 1, limit: 10 }));
+          }, 3500);
+        }
+      } else {
+        throw new Error(res.data?.message || "Payment verification failed.");
+      }
+    } catch (err) {
+      console.error("[CreditModal] Verification error:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Payment was authorized on Razorpay, but verification could not be confirmed.";
+
+      // Provide safe retry reconciliation without creating a new order
+      setNotice({
+        type: "error",
+        message: `${errorMessage} Please retry verification to claim your credits.`,
+        retryAction: {
+          label: "Retry Verification",
+          onClick: () => verifyAndFulfillPayment(razorpayResponse, order),
+        },
+      });
+    } finally {
+      setVerifying(false);
+      setPurchasingPackageId(null);
+    }
+  };
+
+  // Start purchase flow when user clicks a package button
+  const handlePurchase = async (pkg) => {
+    if (purchasingPackageId !== null || verifying) return;
+
+    if (!userData) {
+      setNotice({
+        type: "error",
+        message: "Please log in to purchase credits.",
+      });
+      return;
+    }
+
+    setPurchasingPackageId(pkg.id);
+    setNotice(null);
+
+    try {
+      // 1. Dynamically load official Razorpay SDK
+      try {
+        await loadRazorpayScript();
+      } catch (loadErr) {
+        setPurchasingPackageId(null);
+        setNotice({
+          type: "error",
+          message:
+            loadErr.message ||
+            "Failed to load Razorpay payment gateway script. Please check your internet or ad blocker.",
+        });
+        return;
+      }
+
+      // 2. Call Payment Service order creation API through Gateway
+      const orderRes = await api.post("/payment/create-order", {
+        packageId: pkg.id,
+      });
+
+      if (!orderRes.data?.success || !orderRes.data?.order) {
+        throw new Error(orderRes.data?.message || "Failed to create payment order.");
+      }
+
+      const { order, key } = orderRes.data;
+      const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID || key;
+
+      if (!razorpayKey) {
+        throw new Error("Razorpay public Key ID is missing from configuration.");
+      }
+
+      const totalCredits = (order.credits || 0) + (order.bonusCredits || 0);
+
+      // 3. Configure Razorpay Standard Checkout options
+      const options = {
+        key: razorpayKey,
+        amount: order.amount, // in paise
+        currency: order.currency || "INR",
+        name: "NexusMind",
+        description: `${order.packageName || pkg.name} Plan (${totalCredits.toLocaleString()} credits)`,
+        order_id: order.id,
+        prefill: {
+          name: userData?.name || "",
+          email: userData?.email || "",
+        },
+        theme: {
+          color: "#4f46e5",
+        },
+        modal: {
+          ondismiss: () => {
+            setPurchasingPackageId(null);
+            setNotice({
+              type: "info",
+              message: "Checkout was closed. No payment was made.",
+            });
+          },
+          escape: true,
+          backdropclose: false,
+        },
+        handler: async (response) => {
+          // Razorpay payment success callback
+          await verifyAndFulfillPayment(response, order);
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+
+      rzp.on("payment.failed", (response) => {
+        setPurchasingPackageId(null);
+        const reason =
+          response.error?.description ||
+          response.error?.reason ||
+          "Payment was declined or failed.";
+        setNotice({
+          type: "error",
+          message: `Payment failed: ${reason}`,
+        });
+      });
+
+      rzp.open();
+    } catch (err) {
+      console.error("[CreditModal] Order creation error:", err);
+      setPurchasingPackageId(null);
+      setNotice({
+        type: "error",
+        message:
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to initiate purchase. Please try again.",
+      });
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -105,120 +426,292 @@ export default function CreditModal({ isOpen, onClose }) {
             </div>
           </div>
 
+          {/* Status / Alert Notification */}
+          {notice && (
+            <div
+              className={`rounded-xl border p-3 sm:p-4 text-xs flex items-center justify-between gap-3 transition ${
+                notice.type === "success"
+                  ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-200"
+                  : notice.type === "error"
+                  ? "border-red-500/30 bg-red-950/40 text-red-200"
+                  : notice.type === "warning"
+                  ? "border-amber-500/30 bg-amber-950/40 text-amber-200"
+                  : "border-indigo-500/30 bg-indigo-950/40 text-indigo-200"
+              }`}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-semibold shrink-0">
+                  {notice.type === "success"
+                    ? "✓"
+                    : notice.type === "error"
+                    ? "✗"
+                    : notice.type === "warning"
+                    ? "⚠"
+                    : "ℹ"}
+                </span>
+                <span className="break-words">{notice.message}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {notice.retryAction && (
+                  <button
+                    type="button"
+                    onClick={notice.retryAction.onClick}
+                    disabled={verifying || retryingFulfillment}
+                    className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50"
+                  >
+                    {retryingFulfillment ? "Processing..." : notice.retryAction.label}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setNotice(null)}
+                  className="text-slate-400 hover:text-slate-200 p-1"
+                  aria-label="Dismiss notice"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Top Up Credits Section */}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
               <h3 className="text-sm font-semibold text-slate-200">
                 Top Up Credits
               </h3>
-              <span className="text-[11px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20 whitespace-nowrap">
-                Razorpay Checkout (Coming Soon)
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
+                <LockIcon />
+                Secured by Razorpay
               </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-              {PRICING_TIERS.map((tier) => (
-                <div
-                  key={tier.name}
-                  className={`rounded-xl border p-4 sm:p-4 md:p-5 flex flex-col justify-between h-full min-w-0 transition ${
-                    tier.popular
-                      ? "border-indigo-500/60 bg-indigo-950/20 shadow-sm"
-                      : "border-slate-800 bg-slate-950/50"
-                  }`}
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-xs sm:text-sm font-semibold text-slate-200 truncate">
-                        {tier.name}
-                      </h4>
-                      {tier.popular && (
-                        <span className="shrink-0 text-[9px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                          Popular
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-2 text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
-                      {tier.credits.toLocaleString()}{" "}
-                      <span className="text-xs font-normal text-slate-400">
-                        credits
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-slate-400 mt-1">{tier.price}</p>
-                  </div>
+              {packages.map((tier) => {
+                const isThisPackageActive = purchasingPackageId === tier.id;
+                const isAnyOperationActive = purchasingPackageId !== null || verifying;
+                const totalCredits = tier.credits + (tier.bonusCredits || 0);
 
-                  <button
-                    disabled
-                    type="button"
-                    className="mt-4 w-full rounded-lg bg-slate-800 py-1.5 sm:py-2 text-xs font-medium text-slate-400 cursor-not-allowed hover:bg-slate-800 opacity-70 transition border border-slate-700/50"
-                    title="Payment gateway will be integrated in future release"
+                return (
+                  <div
+                    key={tier.id || tier.name}
+                    className={`rounded-xl border p-4 sm:p-4 md:p-5 flex flex-col justify-between h-full min-w-0 transition ${
+                      tier.popular
+                        ? "border-indigo-500/60 bg-indigo-950/20 shadow-sm"
+                        : "border-slate-800 bg-slate-950/50"
+                    }`}
                   >
-                    Select Plan
-                  </button>
-                </div>
-              ))}
+                    <div className="min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="text-xs sm:text-sm font-semibold text-slate-200 truncate">
+                          {tier.name}
+                        </h4>
+                        {tier.popular && (
+                          <span className="shrink-0 text-[9px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                            Popular
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-2 text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
+                        {totalCredits.toLocaleString()}{" "}
+                        <span className="text-xs font-normal text-slate-400">
+                          credits
+                        </span>
+                      </div>
+                      {tier.bonusCredits > 0 ? (
+                        <p className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                          +{tier.bonusCredits.toLocaleString()} bonus included
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Standard package
+                        </p>
+                      )}
+                      <p className="text-xs sm:text-sm font-semibold text-slate-200 mt-2">
+                        {formatPrice(tier.price, tier.currency)}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handlePurchase(tier)}
+                      disabled={isAnyOperationActive}
+                      className={`mt-4 w-full rounded-lg py-1.5 sm:py-2 text-xs font-semibold transition flex items-center justify-center gap-2 border ${
+                        isThisPackageActive
+                          ? "bg-indigo-600/80 text-white cursor-wait border-indigo-500"
+                          : isAnyOperationActive
+                          ? "bg-slate-800 text-slate-500 cursor-not-allowed border-slate-700/50"
+                          : tier.popular
+                          ? "bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                          : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                      }`}
+                    >
+                      {isThisPackageActive ? (
+                        <>
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span>{verifying ? "Verifying..." : "Opening..."}</span>
+                        </>
+                      ) : (
+                        <span>Buy Now</span>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
-          {/* Transaction History */}
+          {/* Payment Transaction History */}
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-slate-200 mb-3">
-              Transaction History
-            </h3>
-            {historyLoading ? (
-              <div className="flex items-center justify-center py-6 text-slate-400 text-xs">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mr-2" />
-                Loading history...
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <h3 className="text-sm font-semibold text-slate-200">
+                Transaction History
+              </h3>
+              {paymentHistoryTotal > 0 && (
+                <span className="text-[11px] text-slate-400">
+                  {paymentHistoryTotal} {paymentHistoryTotal === 1 ? "order" : "orders"}
+                </span>
+              )}
+            </div>
+
+            {/* Error state */}
+            {paymentHistoryError ? (
+              <div className="rounded-xl border border-red-500/30 bg-red-950/30 p-4 text-xs text-red-300 flex items-center justify-between gap-3">
+                <span>Failed to load transaction history: {paymentHistoryError}</span>
+                <button
+                  type="button"
+                  onClick={() => dispatch(fetchPaymentHistory({ page: paymentHistoryPage, limit: 10 }))}
+                  className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1 font-semibold text-white transition shrink-0"
+                >
+                  Retry
+                </button>
               </div>
-            ) : history.length === 0 ? (
-              <p className="text-center py-6 text-xs text-slate-500">
-                No transactions recorded yet.
-              </p>
+            ) : paymentHistoryLoading ? (
+              /* Loading state */
+              <div className="flex items-center justify-center py-8 text-slate-400 text-xs">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mr-2" />
+                Loading transaction history...
+              </div>
+            ) : paymentHistory.length === 0 ? (
+              /* Empty state */
+              <div className="rounded-xl border border-slate-800 bg-slate-950/40 py-8 text-center text-xs text-slate-500">
+                No payment transactions recorded yet.
+              </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 min-w-0">
-                <table className="w-full text-left text-xs min-w-[500px] sm:min-w-full border-collapse">
-                  <thead className="bg-slate-800/60 text-slate-400 border-b border-slate-800">
-                    <tr>
-                      <th className="px-3 sm:px-4 py-2.5 font-medium w-[15%]">Type</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-medium w-[15%]">Amount</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-medium w-[45%]">Description</th>
-                      <th className="px-3 sm:px-4 py-2.5 font-medium w-[25%]">Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                    {history.map((tx) => (
-                      <tr key={tx._id} className="hover:bg-slate-800/30 transition-colors">
-                        <td className="px-3 sm:px-4 py-2.5">
-                          <span
-                            className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              tx.type === "CREDIT"
-                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                : tx.type === "REFUND"
-                                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                                : "bg-red-500/10 text-red-400 border border-red-500/20"
-                            }`}
-                          >
-                            {tx.type}
-                          </span>
-                        </td>
-                        <td className="px-3 sm:px-4 py-2.5 font-mono">
-                          {tx.type === "CREDIT" || tx.type === "REFUND"
-                            ? `+${tx.amount}`
-                            : `-${tx.amount}`}
-                        </td>
-                        <td className="px-3 sm:px-4 py-2.5 text-slate-300 break-words">
-                          {tx.description || tx.source}
-                        </td>
-                        <td className="px-3 sm:px-4 py-2.5 text-slate-400 whitespace-nowrap">
-                          {new Date(tx.createdAt).toLocaleDateString([], {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </td>
+              /* Populated state */
+              <div className="space-y-3 min-w-0">
+                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 min-w-0">
+                  <table className="w-full text-left text-xs min-w-[540px] sm:min-w-full border-collapse">
+                    <thead className="bg-slate-800/60 text-slate-400 border-b border-slate-800">
+                      <tr>
+                        <th className="px-3 sm:px-4 py-2.5 font-medium">Package</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-medium">Amount</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-medium">Credits</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-medium">Status</th>
+                        <th className="px-3 sm:px-4 py-2.5 font-medium">Date</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                      {paymentHistory.map((tx) => (
+                        <tr key={tx.id || tx.orderId} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="px-3 sm:px-4 py-2.5">
+                            <span className="font-medium text-slate-200">
+                              {tx.packageName || tx.packageId || "Credit Top-Up"}
+                            </span>
+                          </td>
+                          <td className="px-3 sm:px-4 py-2.5 font-mono text-slate-200">
+                            {formatPrice(tx.amount, tx.currency)}
+                          </td>
+                          <td className="px-3 sm:px-4 py-2.5 font-mono text-emerald-400">
+                            +{tx.credits?.toLocaleString() || "0"}
+                          </td>
+                          <td className="px-3 sm:px-4 py-2.5">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                tx.status === "fulfilled"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  : tx.status === "verified"
+                                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                  : tx.status === "failed"
+                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                                  : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                              }`}
+                            >
+                              {tx.status?.toUpperCase() || "PENDING"}
+                            </span>
+                            {tx.status === "verified" && (
+                              <button
+                                type="button"
+                                onClick={() => handleRetryFulfillment(tx.orderId)}
+                                disabled={retryingFulfillment}
+                                className="ml-2 underline text-[10px] text-amber-300 hover:text-amber-200 disabled:opacity-50"
+                              >
+                                Claim
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-3 sm:px-4 py-2.5 text-slate-400 whitespace-nowrap">
+                            {tx.createdAt
+                              ? new Date(tx.createdAt).toLocaleDateString([], {
+                                  month: "short",
+                                  day: "numeric",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination controls */}
+                {paymentHistoryTotalPages > 1 && (
+                  <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
+                    <span>
+                      Page {paymentHistoryPage} of {paymentHistoryTotalPages}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dispatch(
+                            fetchPaymentHistory({
+                              page: Math.max(1, paymentHistoryPage - 1),
+                              limit: 10,
+                            })
+                          )
+                        }
+                        disabled={paymentHistoryPage <= 1 || paymentHistoryLoading}
+                        className="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          dispatch(
+                            fetchPaymentHistory({
+                              page: Math.min(
+                                paymentHistoryTotalPages,
+                                paymentHistoryPage + 1
+                              ),
+                              limit: 10,
+                            })
+                          )
+                        }
+                        disabled={
+                          paymentHistoryPage >= paymentHistoryTotalPages ||
+                          paymentHistoryLoading
+                        }
+                        className="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

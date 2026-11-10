@@ -222,6 +222,56 @@ export const refundCredits = async (req, res) => {
 };
 
 /**
+ * POST /auth/credits/add
+ * Internal endpoint called by Payment Service after successful Razorpay verification.
+ * Body: { userId, amount, source, referenceId, description }
+ * Idempotent via referenceId — duplicate calls with the same referenceId return existing result.
+ */
+export const addCredits = async (req, res) => {
+  try {
+    if (!verifyInternalSecret(req)) {
+      console.warn("[Credit Controller] addCredits: Invalid internal secret");
+      return res.status(403).json({
+        success: false,
+        message: "Forbidden: Invalid internal secret",
+      });
+    }
+
+    const { userId, amount, source, referenceId, description } = req.body;
+    if (!userId || amount === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "userId and amount are required",
+      });
+    }
+
+    console.log(
+      `[Credit Controller] addCredits: userId=${userId}, amount=${amount}, source=${source || "PAYMENT"}, referenceId=${referenceId || ""}`
+    );
+
+    const result = await creditService.addCredits(
+      userId,
+      amount,
+      source || "PAYMENT",
+      referenceId || "",
+      description || ""
+    );
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+    });
+  } catch (err) {
+    console.error("[Credit Controller] addCredits error:", err.message);
+    const status = err.message === "User not found" ? 404 : 500;
+    return res.status(status).json({
+      success: false,
+      message: err.message || "Failed to add credits",
+    });
+  }
+};
+
+/**
  * POST /auth/usage/record
  * Internal endpoint called by Agent Service to record token usage.
  * Body: { userId, conversationId, agent, model, inputTokens, outputTokens, totalTokens, estimatedCost, currency }

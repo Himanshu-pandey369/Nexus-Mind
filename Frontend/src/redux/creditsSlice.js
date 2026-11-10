@@ -16,7 +16,7 @@ export const fetchCreditBalance = createAsyncThunk(
   }
 );
 
-// Async thunk to fetch paginated credit transaction history
+// Async thunk to fetch paginated credit transaction history (agent usage & allocations)
 export const fetchCreditHistory = createAsyncThunk(
   "credits/fetchCreditHistory",
   async ({ page = 1, limit = 20 } = {}, { rejectWithValue }) => {
@@ -33,6 +33,23 @@ export const fetchCreditHistory = createAsyncThunk(
   }
 );
 
+// Async thunk to fetch paginated payment purchase transactions from Payment service
+export const fetchPaymentHistory = createAsyncThunk(
+  "credits/fetchPaymentHistory",
+  async ({ page = 1, limit = 10 } = {}, { rejectWithValue }) => {
+    try {
+      const response = await api.get("/payment/history", {
+        params: { page, limit },
+      });
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch payment history"
+      );
+    }
+  }
+);
+
 const creditsSlice = createSlice({
   name: "credits",
   initialState: {
@@ -43,6 +60,13 @@ const creditsSlice = createSlice({
     historyPage: 1,
     historyLoading: false,
     error: null,
+    // Payment transaction history
+    paymentHistory: [],
+    paymentHistoryTotal: 0,
+    paymentHistoryPage: 1,
+    paymentHistoryTotalPages: 1,
+    paymentHistoryLoading: false,
+    paymentHistoryError: null,
   },
   reducers: {
     setCreditBalance: (state, action) => {
@@ -69,7 +93,7 @@ const creditsSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
-      // History
+      // Credit Usage History
       .addCase(fetchCreditHistory.pending, (state) => {
         state.historyLoading = true;
       })
@@ -82,6 +106,22 @@ const creditsSlice = createSlice({
       .addCase(fetchCreditHistory.rejected, (state, action) => {
         state.historyLoading = false;
         state.error = action.payload;
+      })
+      // Payment Purchase History
+      .addCase(fetchPaymentHistory.pending, (state) => {
+        state.paymentHistoryLoading = true;
+        state.paymentHistoryError = null;
+      })
+      .addCase(fetchPaymentHistory.fulfilled, (state, action) => {
+        state.paymentHistoryLoading = false;
+        state.paymentHistory = action.payload.payments || [];
+        state.paymentHistoryTotal = action.payload.total || 0;
+        state.paymentHistoryPage = action.payload.page || 1;
+        state.paymentHistoryTotalPages = action.payload.totalPages || 1;
+      })
+      .addCase(fetchPaymentHistory.rejected, (state, action) => {
+        state.paymentHistoryLoading = false;
+        state.paymentHistoryError = action.payload;
       });
   },
 });

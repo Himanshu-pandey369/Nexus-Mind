@@ -5,6 +5,7 @@ import {
   reserveCredits,
   commitCredits,
   refundCredits,
+  addCredits,
 } from "../controllers/credit.controller.js";
 
 const router = express.Router();
@@ -17,5 +18,6 @@ router.get("/history", getHistory);
 router.post("/reserve", reserveCredits);
 router.post("/commit", commitCredits);
 router.post("/refund", refundCredits);
+router.post("/add", addCredits);
 
 export default router;

@@ -1,0 +1,99 @@
+version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: nexusmind-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  auth-service:
+    build:
+      context: ./Services/auth
+    container_name: nexusmind-auth
+    restart: unless-stopped
+    environment:
+      - PORT=8001
+      - NODE_ENV=production
+      - MONGODB_URI=${AUTH_MONGODB_URI}
+      - Redis_URL=redis://redis:6379
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  chat-service:
+    build:
+      context: ./Services/Chat
+    container_name: nexusmind-chat
+    restart: unless-stopped
+    environment:
+      - PORT=8002
+      - NODE_ENV=production
+      - MONGODB_URI=${CHAT_MONGODB_URI}
+      - Redis_URL=redis://redis:6379
+
+  payment-service:
+    build:
+      context: ./Services/Payment
+    container_name: nexusmind-payment
+    restart: unless-stopped
+    environment:
+      - PORT=8003
+      - NODE_ENV=production
+      - MONGODB_URI=${PAYMENT_MONGODB_URI}
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
+      - RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}
+      - RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}
+      - RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}
+    depends_on:
+      - auth-service
+
+  agent-service:
+    build:
+      context: ./Services/Agent
+    container_name: nexusmind-agent
+    restart: unless-stopped
+    environment:
+      - PORT=8004
+      - NODE_ENV=production
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - INTERNAL_SECRET=${INTERNAL_SECRET}
+    depends_on:
+      - auth-service
+
+  gateway:
+    build:
+      context: ./Gateway
+    container_name: nexusmind-gateway
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - NODE_ENV=production
+      - FRONTEND_URL=${FRONTEND_URL}
+      - Redis_URL=redis://redis:6379
+      - AUTH_SERVICE=http://auth-service:8001
+      - CHAT_SERVICE=http://chat-service:8002
+      - PAYMENT_SERVICE=http://payment-service:8003
+      - AGENT_SERVICE=http://agent-service:8004
+    depends_on:
+      redis:
+        condition: service_healthy
+      - auth-service
+      - chat-service
+      - payment-service
+      - agent-service
+
+volumes:
+  redis_data:

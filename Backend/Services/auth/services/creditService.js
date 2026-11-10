@@ -125,8 +125,12 @@ export async function addCredits(
     description: description || `Credits added via ${source}`,
   });
 
-  // Sync Redis session if present
-  syncUserRedisSession(userId, balanceAfter).catch(() => {});
+  // Sync Redis session immediately so gateway /me never returns stale credits
+  try {
+    await syncUserRedisSession(userId, balanceAfter);
+  } catch (syncErr) {
+    console.warn("[Credit Service] Redis session sync warning:", syncErr.message);
+  }
 
   return {
     balance: balanceAfter,

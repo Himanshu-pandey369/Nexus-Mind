@@ -34,16 +34,28 @@ const userSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchCurrentUser.pending, (state) => {
-        state.loading = true;
+        // Only show loading spinner on initial load (no user yet).
+        // Subsequent refreshes (e.g. from CreditModal) should not
+        // flash the spinner or risk wiping the session.
+        if (!state.userData) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(fetchCurrentUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.userData = action.payload;
+        // Only update userData if we got a valid response.
+        // If the server returned null/undefined, keep the existing session
+        // so the user doesn't get logged out unexpectedly.
+        if (action.payload) {
+          state.userData = action.payload;
+        }
       })
       .addCase(fetchCurrentUser.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        // Do NOT clear userData here — a transient network error
+        // should not log the user out.
       });
   },
 });
