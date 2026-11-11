@@ -19,8 +19,8 @@ export default function App() {
   // Show a loading spinner while checking auth status
   if (loading) {
     return (
-      <div className="flex min-h-svh items-center justify-center bg-white dark:bg-slate-950">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+      <div className="flex min-h-svh items-center justify-center bg-nm-bg">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-gold border-t-transparent" />
       </div>
     );
   }

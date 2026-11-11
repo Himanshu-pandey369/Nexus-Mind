@@ -54,10 +54,10 @@ function CopyButton({ code }) {
     <button
       onClick={handleCopy}
       aria-label={copied ? "Copied" : "Copy code"}
-      className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition select-none focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+      className={`flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition select-none focus:outline-none focus:ring-2 focus:ring-gold/50 ${
         copied
-          ? "bg-indigo-600 text-white"
-          : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+          ? "bg-gold text-nm-sidebar font-medium"
+          : "bg-nm-elevated text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text"
       }`}
     >
       {copied ? (
@@ -99,10 +99,10 @@ function CodeBlock({ language, children }) {
   const lang = language || "text";
 
   return (
-    <div className="group/code relative my-3 rounded-xl overflow-hidden border border-slate-700 bg-slate-900">
+    <div className="group/code relative my-3 rounded-xl overflow-hidden border border-nm-border bg-nm-secondary">
       {/* Header */}
-      <div className="flex items-center justify-between bg-slate-800 px-4 py-1.5">
-        <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 select-none">
+      <div className="flex items-center justify-between bg-nm-elevated px-4 py-1.5 border-b border-nm-border-subtle">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-nm-text-muted select-none">
           {lang}
         </span>
         <CopyButton code={code} />
@@ -146,7 +146,7 @@ const markdownComponents = {
     }
     return (
       <code
-        className="rounded bg-slate-700/60 px-1 py-0.5 font-mono text-[0.8125rem] text-indigo-300"
+        className="rounded bg-nm-elevated border border-nm-border-subtle px-1 py-0.5 font-mono text-[0.8125rem] text-gold-light"
         {...props}
       >
         {children}
@@ -156,29 +156,29 @@ const markdownComponents = {
 
   // Headings
   h1: ({ children }) => (
-    <h1 className="mb-3 mt-5 text-xl font-bold text-slate-100 leading-snug">{children}</h1>
+    <h1 className="mb-3 mt-5 text-xl font-bold text-nm-text leading-snug">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mb-2 mt-4 text-lg font-semibold text-slate-100 leading-snug">{children}</h2>
+    <h2 className="mb-2 mt-4 text-lg font-semibold text-nm-text leading-snug">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mb-2 mt-3 text-base font-semibold text-slate-200">{children}</h3>
+    <h3 className="mb-2 mt-3 text-base font-semibold text-nm-text">{children}</h3>
   ),
   h4: ({ children }) => (
-    <h4 className="mb-1 mt-3 text-sm font-semibold text-slate-200">{children}</h4>
+    <h4 className="mb-1 mt-3 text-sm font-semibold text-nm-text">{children}</h4>
   ),
 
   // Paragraphs
   p: ({ children }) => (
-    <p className="mb-3 last:mb-0 leading-relaxed text-slate-200">{children}</p>
+    <p className="mb-3 last:mb-0 leading-relaxed text-nm-text-secondary">{children}</p>
   ),
 
   // Lists
   ul: ({ children }) => (
-    <ul className="mb-3 ml-5 list-disc space-y-1 text-slate-200">{children}</ul>
+    <ul className="mb-3 ml-5 list-disc space-y-1 text-nm-text-secondary">{children}</ul>
   ),
   ol: ({ children }) => (
-    <ol className="mb-3 ml-5 list-decimal space-y-1 text-slate-200">{children}</ol>
+    <ol className="mb-3 ml-5 list-decimal space-y-1 text-nm-text-secondary">{children}</ol>
   ),
   li: ({ children }) => (
     <li className="leading-relaxed">{children}</li>
@@ -186,21 +186,21 @@ const markdownComponents = {
 
   // Bold / italic
   strong: ({ children }) => (
-    <strong className="font-semibold text-slate-100">{children}</strong>
+    <strong className="font-semibold text-nm-text">{children}</strong>
   ),
   em: ({ children }) => (
-    <em className="italic text-slate-300">{children}</em>
+    <em className="italic text-nm-text-secondary">{children}</em>
   ),
 
   // Blockquote
   blockquote: ({ children }) => (
-    <blockquote className="my-3 border-l-4 border-indigo-500 pl-4 italic text-slate-400">
+    <blockquote className="my-3 border-l-4 border-gold pl-4 italic text-nm-text-muted">
       {children}
     </blockquote>
   ),
 
   // Horizontal rule
-  hr: () => <hr className="my-4 border-slate-700" />,
+  hr: () => <hr className="my-4 border-nm-border" />,
 
   // Table
   table: ({ children }) => (
@@ -209,19 +209,19 @@ const markdownComponents = {
     </div>
   ),
   thead: ({ children }) => (
-    <thead className="border-b border-slate-700 bg-slate-800">{children}</thead>
+    <thead className="border-b border-nm-border bg-nm-elevated">{children}</thead>
   ),
   tbody: ({ children }) => (
-    <tbody className="divide-y divide-slate-800">{children}</tbody>
+    <tbody className="divide-y divide-nm-border-subtle">{children}</tbody>
   ),
   tr: ({ children }) => <tr>{children}</tr>,
   th: ({ children }) => (
-    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-400">
+    <th className="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-nm-text-muted">
       {children}
     </th>
   ),
   td: ({ children }) => (
-    <td className="px-3 py-2 text-slate-300">{children}</td>
+    <td className="px-3 py-2 text-nm-text-secondary">{children}</td>
   ),
 
   // Links — safe href only
@@ -255,7 +255,7 @@ const markdownComponents = {
         <a
           href={safe}
           onClick={handlePdfClick}
-          className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300 cursor-pointer"
+          className="text-gold underline underline-offset-2 hover:text-gold-hover cursor-pointer"
         >
           {children}
         </a>
@@ -267,7 +267,7 @@ const markdownComponents = {
         href={safe}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-indigo-400 underline underline-offset-2 hover:text-indigo-300"
+        className="text-gold underline underline-offset-2 hover:text-gold-hover"
       >
         {children}
       </a>
@@ -305,7 +305,7 @@ function ImageLightbox({ url, alt, onClose }) {
         <button
           onClick={onClose}
           aria-label="Close image"
-          className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 text-slate-300 shadow-lg transition hover:bg-slate-700 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="absolute -right-3 -top-3 flex h-8 w-8 items-center justify-center rounded-full bg-nm-elevated text-nm-text-secondary shadow-lg transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50"
         >
           <CloseXIcon />
         </button>
@@ -324,7 +324,7 @@ function CloseXIcon() {
 
 function ArtifactIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-indigo-400" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-gold" aria-hidden="true">
       <path fillRule="evenodd" d="M4.25 2A2.25 2.25 0 0 0 2 4.25v11.5A2.25 2.25 0 0 0 4.25 18h11.5A2.25 2.25 0 0 0 18 15.75V4.25A2.25 2.25 0 0 0 15.75 2H4.25Zm4.03 6.28a.75.75 0 0 0-1.06-1.06L5.97 9.47a.75.75 0 0 0 0 1.06l1.25 1.25a.75.75 0 1 0 1.06-1.06l-.72-.72.72-.72Zm4.5-1.06a.75.75 0 1 0-1.06 1.06l.72.72-.72.72a.75.75 0 1 0 1.06 1.06l1.25-1.25a.75.75 0 0 0 0-1.06l-1.25-1.25Z" clipRule="evenodd" />
     </svg>
   );
@@ -334,7 +334,7 @@ function ArtifactIcon() {
 
 function PdfIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-red-400" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-nm-error" aria-hidden="true">
       <path fillRule="evenodd" d="M3 3.5A1.5 1.5 0 0 1 4.5 2h6.879a1.5 1.5 0 0 1 1.06.44l4.122 4.12A1.5 1.5 0 0 1 17 7.622V16.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 3 16.5v-13Z" clipRule="evenodd" />
     </svg>
   );
@@ -374,19 +374,19 @@ function PdfDownloadCard({ title, url }) {
   };
 
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-950/30 px-4 py-3">
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-nm-error/30 bg-nm-error/10 px-4 py-3">
       <PdfIcon />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold text-slate-200">
+        <p className="truncate text-xs font-semibold text-nm-text">
           {title || "Generated Document"}
         </p>
-        <p className="text-[10px] text-slate-500">PDF · NexusMind</p>
+        <p className="text-[10px] text-nm-text-muted">PDF · NexusMind</p>
       </div>
       <button
         type="button"
         onClick={handleDownload}
         disabled={downloading}
-        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-red-500 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-red-500"
+        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-nm-error px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-nm-error/85 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-nm-error/50"
       >
         {downloading ? (
           <>
@@ -408,7 +408,7 @@ function PdfDownloadCard({ title, url }) {
 
 function PptIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-orange-400" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 shrink-0 text-nm-warning" aria-hidden="true">
       <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 0 1 .628.74v2.288a3.5 3.5 0 0 1-1.5 2.898v9.523A.75.75 0 0 1 15.75 18H4.25A.75.75 0 0 1 3.5 17.25V7.527A3.5 3.5 0 0 1 2 4.629V2.341a.75.75 0 0 1 .628-.74Z" clipRule="evenodd" />
     </svg>
   );
@@ -452,23 +452,23 @@ function PptDownloadCard({ title, url }) {
   };
 
   return (
-    <div className="mt-3 flex items-center gap-3 rounded-xl border border-orange-500/30 bg-orange-950/30 px-4 py-3">
+    <div className="mt-3 flex items-center gap-3 rounded-xl border border-nm-warning/30 bg-nm-warning/10 px-4 py-3">
       <PptIcon />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold text-slate-200">
+        <p className="truncate text-xs font-semibold text-nm-text">
           {title || "Generated Presentation"}
         </p>
-        <p className="text-[10px] text-slate-500">PPTX · NexusMind</p>
+        <p className="text-[10px] text-nm-text-muted">PPTX · NexusMind</p>
       </div>
       <button
         type="button"
         onClick={handleDownload}
         disabled={downloading}
-        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-orange-600 px-3 py-1.5 text-[11px] font-medium text-white transition hover:bg-orange-500 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-orange-500"
+        className="shrink-0 flex items-center gap-1.5 rounded-lg bg-nm-warning px-3 py-1.5 text-[11px] font-medium text-nm-sidebar transition hover:bg-nm-warning/85 disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-nm-warning/50"
       >
         {downloading ? (
           <>
-            <svg className="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
+            <svg className="animate-spin h-3.5 w-3.5 text-nm-sidebar" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
             </svg>
@@ -511,7 +511,7 @@ function ImageGrid({ images }) {
               key={`${imgUrl}-${idx}`}
               type="button"
               onClick={() => openLightbox(imgUrl, altText)}
-              className={`group/img relative block overflow-hidden rounded-xl border border-slate-700 bg-slate-900 transition hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              className={`group/img relative block overflow-hidden rounded-xl border border-nm-border bg-nm-secondary transition hover:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/50 ${
                 isSingle
                   ? "w-full max-w-sm aspect-square"
                   : "aspect-video"
@@ -599,7 +599,7 @@ export default function MessageBubble({ message, onSelectArtifact }) {
       >
         {isUser ? (
           /* ── User message: styled bubble ─────────────────────────── */
-          <div className="rounded-2xl rounded-br-sm bg-indigo-600 px-4 py-3 text-sm leading-relaxed text-white whitespace-pre-wrap break-words">
+          <div className="rounded-2xl rounded-br-sm bg-gold-surface border border-gold/30 px-4 py-3 text-sm leading-relaxed text-nm-text whitespace-pre-wrap break-words">
             {images.length > 0 && (
               <div className="mb-2 max-w-xs overflow-hidden rounded-lg">
                 <img
@@ -613,7 +613,7 @@ export default function MessageBubble({ message, onSelectArtifact }) {
           </div>
         ) : (
           /* ── Assistant message: transparent, Markdown-rendered ────── */
-          <div className="min-w-0 max-w-full overflow-hidden rounded-2xl rounded-bl-sm bg-slate-800/50 px-4 py-3 text-sm text-slate-100">
+          <div className="min-w-0 max-w-full overflow-hidden rounded-2xl rounded-bl-sm bg-nm-secondary border border-nm-border-subtle px-4 py-3 text-sm text-nm-text-secondary">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={markdownComponents}
@@ -646,11 +646,11 @@ export default function MessageBubble({ message, onSelectArtifact }) {
 
             {/* Coding Agent Generated Files / Artifact trigger */}
             {projectFiles.length > 0 && (
-              <div className="mt-3 pt-2 border-t border-slate-700/60">
+              <div className="mt-3 pt-2 border-t border-nm-border-subtle">
                 <button
                   type="button"
                   onClick={() => onSelectArtifact?.({ type: "project", artifacts: artifacts.filter((a) => a.type !== "pdf" && a.type !== "ppt") })}
-                  className="flex items-center gap-2 rounded-lg border border-indigo-500/40 bg-indigo-950/50 px-3 py-2 text-xs font-medium text-indigo-300 transition hover:bg-indigo-900/60 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="flex items-center gap-2 rounded-lg border border-gold/30 bg-gold-surface px-3 py-2 text-xs font-medium text-gold transition hover:bg-[#272116] hover:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/50"
                 >
                   <ArtifactIcon />
                   <span>
@@ -664,7 +664,7 @@ export default function MessageBubble({ message, onSelectArtifact }) {
 
         {/* Timestamp (hover-visible) */}
         {time && (
-          <span className="px-1 text-xs text-slate-500 opacity-0 transition-opacity group-hover:opacity-100">
+          <span className="px-1 text-xs text-nm-text-disabled opacity-0 transition-opacity group-hover:opacity-100">
             {time}
           </span>
         )}

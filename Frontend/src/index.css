@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+/* ─── NexusMind Design Tokens: Black + Champagne Gold ─────────────── */
+
+@theme {
+  /* Backgrounds */
+  --color-nm-bg: #111111;
+  --color-nm-sidebar: #090909;
+  --color-nm-secondary: #171717;
+  --color-nm-elevated: #1C1C1C;
+  --color-nm-hover: #24221D;
+
+  /* Champagne Gold */
+  --color-gold: #C6A66B;
+  --color-gold-hover: #D5B77E;
+  --color-gold-light: #E2C995;
+  --color-gold-muted: #A88A55;
+  --color-gold-surface: #211C13;
+
+  /* Typography */
+  --color-nm-text: #F5F2EB;
+  --color-nm-text-secondary: #C1BBB0;
+  --color-nm-text-muted: #918B80;
+  --color-nm-text-disabled: #625E56;
+
+  /* Borders */
+  --color-nm-border: #302D27;
+  --color-nm-border-subtle: #25231F;
+
+  /* Status */
+  --color-nm-success: #4CAF82;
+  --color-nm-error: #E16D6D;
+  --color-nm-warning: #D6A354;
+  --color-nm-info: #7FA9D8;
+
+  /* Font family */
+  --font-sans: "DM Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ─── Global base styles ──────────────────────────────────────────── */
+
+html {
+  background-color: #111111;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #F5F2EB;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #302D27;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #918B80;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(198, 166, 107, 0.25);
+  color: #F5F2EB;
+}

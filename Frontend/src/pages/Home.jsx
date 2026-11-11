@@ -277,7 +277,7 @@ export default function Home() {
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-svh w-full overflow-hidden bg-slate-950">
+    <div className="flex h-svh w-full overflow-hidden bg-nm-bg text-nm-text">
       {/* ── Mobile sidebar overlay ───────────────────────────────────────── */}
       {/* Always rendered but pointer-events / opacity toggled for smooth transition */}
       <div

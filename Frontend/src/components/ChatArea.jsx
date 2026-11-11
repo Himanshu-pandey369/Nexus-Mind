@@ -3,6 +3,7 @@ import AgentSelector from "./AgentSelector";
 import MessageList from "./MessageList";
 import ChatInput from "./ChatInput";
 import getUserPlan from "../utils/userPlan";
+import NexusMindLogo from "./NexusMindLogo";
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
@@ -49,22 +50,27 @@ export default function ChatArea({
   const { userData } = useSelector((state) => state.user);
   const userPlan = getUserPlan(userData);
   return (
-    <div className="flex h-full flex-col bg-slate-950 min-w-0">
+    <div className="flex h-full flex-col bg-nm-bg min-w-0">
       {/* ── Chat header ── */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-slate-800 px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-4 min-w-0">
+      <header className="flex h-14 shrink-0 items-center justify-between border-b border-nm-border-subtle px-3 sm:px-4 py-2.5 sm:py-3 gap-2 sm:gap-4 min-w-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
           {/* Sidebar toggle — visible on tablet/mobile */}
           <button
             onClick={onToggleSidebar}
             title="Toggle sidebar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:hidden"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-nm-text-muted transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50 lg:hidden"
             aria-label="Toggle sidebar"
           >
             <MenuIcon />
           </button>
 
+          {/* Brand mark on mobile */}
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gold-surface border border-gold/30 p-1 lg:hidden">
+            <NexusMindLogo className="h-full w-full" />
+          </div>
+
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold text-slate-200">
+            <h1 className="truncate text-sm font-semibold text-nm-text">
               {conversationTitle || "New Conversation"}
             </h1>
           </div>
@@ -72,7 +78,7 @@ export default function ChatArea({
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Dynamic User Plan Badge */}
-          <span className="hidden sm:inline-flex items-center rounded-full bg-slate-800/80 px-2.5 py-1 text-xs font-medium text-indigo-300 border border-slate-700/60 select-none">
+          <span className="hidden sm:inline-flex items-center rounded-full bg-gold-surface px-2.5 py-1 text-xs font-medium text-gold border border-gold/30 select-none">
             {userPlan} Plan
           </span>
 
@@ -87,8 +93,8 @@ export default function ChatArea({
           <button
             onClick={onToggleArtifact}
             title="Toggle artifact panel"
-            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-              artifactPanelOpen ? "bg-slate-800 text-slate-200" : ""
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-nm-text-muted transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50 ${
+              artifactPanelOpen ? "bg-gold-surface text-gold border border-gold/30" : ""
             }`}
             aria-label="Toggle artifact panel"
             aria-pressed={artifactPanelOpen}

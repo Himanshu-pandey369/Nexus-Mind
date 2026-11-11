@@ -6,14 +6,47 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import rateLimit from "express-rate-limit";
 import { authMiddleware } from "./middleware/auth.middle.js";
 import { getCurrentUser } from "./controllers/user.controller.js";
+import {
+  generalLimiter,
+  authLimiter,
+  aiChatLimiter,
+  paymentLimiter,
+  agentRateLimitMiddleware,
+} from "./middleware/rateLimiter.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
+
+// Configure trust proxy safely according to deployment topology
+// When running behind reverse proxy (e.g. Nginx, Cloudflare), set TRUST_PROXY=true or number of hops
+const trustProxySetting = process.env.TRUST_PROXY;
+if (trustProxySetting !== undefined && trustProxySetting !== "") {
+  app.set(
+    "trust proxy",
+    trustProxySetting === "true"
+      ? true
+      : trustProxySetting === "false"
+      ? false
+      : !isNaN(Number(trustProxySetting))
+      ? Number(trustProxySetting)
+      : trustProxySetting
+  );
+} else if (process.env.NODE_ENV === "production") {
+  app.set("trust proxy", 1);
+}
+
+// Health check endpoint (bypasses rate limiting)
+app.get("/health", (req, res) => {
+  return res.status(200).json({
+    status: "ok",
+    service: "gateway",
+    timestamp: new Date().toISOString(),
+  });
+});
 
 app.use(cors({
   origin: process.env.FRONTEND_URL,
@@ -30,17 +63,8 @@ app.use(
 app.use(morgan("dev"));
 app.use(cookieParser());
 
-// Rate limiter for payment endpoints to protect against order creation spam
-const paymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 60, // 60 requests per 15 minutes per IP
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: {
-    success: false,
-    message: "Too many payment requests from this IP, please try again later.",
-  },
-});
+// Apply global general API rate limiter
+app.use(generalLimiter);
 
 app.set("etag", false);
 app.post("/test", (req, res) => {
@@ -54,6 +78,7 @@ app.post("/test", (req, res) => {
 
 app.use(
   "/auth",
+  authLimiter,
   proxy(process.env.AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/auth${req.url}`,
   })
@@ -64,6 +89,7 @@ app.get("/me", authMiddleware, getCurrentUser);
 app.use(
   "/chat",
   authMiddleware,
+  aiChatLimiter,
   proxy(process.env.CHAT_SERVICE, {
     proxyReqPathResolver: (req) => `/chat${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -76,6 +102,7 @@ app.use(
 app.use(
   "/agent",
   authMiddleware,
+  agentRateLimitMiddleware,
   proxy(process.env.AGENT_SERVICE, {
     limit: "15mb",
     proxyReqPathResolver: (req) => `/agent${req.url}`,

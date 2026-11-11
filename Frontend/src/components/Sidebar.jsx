@@ -5,6 +5,7 @@ import { fetchCreditBalance } from "../redux/creditsSlice";
 import api from "../../utils/axios";
 import CreditModal from "./CreditModal";
 import getUserPlan from "../utils/userPlan";
+import NexusMindLogo from "./NexusMindLogo";
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -149,17 +150,17 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="flex h-full w-full flex-col bg-slate-950 border-r border-slate-800">
+    <aside className="flex h-full w-full flex-col bg-nm-sidebar border-r border-nm-border-subtle">
       {/* ── Brand header ── */}
       <div className="flex items-center gap-3 px-4 py-4 shrink-0">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-sm font-bold text-white select-none">
-          N
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold-surface border border-gold/30 p-1 select-none shadow-sm shrink-0">
+          <NexusMindLogo className="h-full w-full" />
         </div>
         <div className="flex flex-col min-w-0 flex-1">
-          <span className="text-base font-semibold tracking-tight text-slate-100">
+          <span className="text-base font-semibold tracking-tight text-nm-text">
             NexusMind
           </span>
-          <span className="text-[10px] text-indigo-400 font-medium">
+          <span className="text-[10px] text-gold font-medium">
             {userPlan} Plan
           </span>
         </div>
@@ -168,7 +169,7 @@ export default function Sidebar({
           <button
             onClick={onClose}
             aria-label="Close sidebar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 lg:hidden"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-nm-text-muted transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50 lg:hidden"
           >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden="true">
               <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
@@ -181,33 +182,33 @@ export default function Sidebar({
       <div className="px-3 pb-3 shrink-0">
         <button
           onClick={onNewChat}
-          className="flex w-full items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex w-full items-center gap-2 rounded-lg border border-nm-border bg-nm-secondary px-3 py-2 text-sm font-medium text-nm-text transition hover:bg-nm-hover hover:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/50"
         >
           <PlusIcon />
           New Chat
         </button>
       </div>
 
-      <div className="mx-3 mb-3 border-t border-slate-800 shrink-0" />
+      <div className="mx-3 mb-3 border-t border-nm-border-subtle shrink-0" />
 
       {/* ── Conversation list ── */}
       <div className="flex-1 overflow-y-auto px-2 space-y-0.5 min-h-0">
-        <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <p className="px-2 py-1 text-xs font-semibold uppercase tracking-wider text-nm-text-muted">
           Recent
         </p>
 
         {convLoading && (
           <div className="flex items-center justify-center py-8">
-            <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
           </div>
         )}
 
         {convError && !convLoading && (
-          <p className="px-2 py-3 text-xs text-red-400">{convError}</p>
+          <p className="px-2 py-3 text-xs text-nm-error">{convError}</p>
         )}
 
         {!convLoading && !convError && conversations.length === 0 && (
-          <p className="px-2 py-6 text-center text-xs text-slate-500">
+          <p className="px-2 py-6 text-center text-xs text-nm-text-muted">
             No conversations yet.
             <br />
             Start a new chat!
@@ -221,10 +222,10 @@ export default function Sidebar({
               key={conv._id}
               onClick={() => onSelectConversation(conv._id, conv.title)}
               title={conv.title}
-              className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+              className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold/50 ${
                 isActive
-                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                  : "text-slate-300 hover:bg-slate-800 border border-transparent"
+                  ? "bg-gold-surface text-gold border border-gold/30"
+                  : "text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text border border-transparent"
               }`}
             >
               <ChatBubbleIcon />
@@ -235,22 +236,22 @@ export default function Sidebar({
       </div>
 
       {/* ── User profile footer & Credits ── */}
-      <div className="shrink-0 border-t border-slate-800 p-3 space-y-2">
+      <div className="shrink-0 border-t border-nm-border-subtle p-3 space-y-2">
         {/* Credits pill button */}
         <button
           type="button"
           onClick={() => setCreditModalOpen(true)}
-          className="flex w-full items-center justify-between rounded-lg border border-indigo-500/30 bg-indigo-950/40 px-2.5 py-1.5 text-xs text-indigo-300 transition hover:bg-indigo-900/50 hover:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex w-full items-center justify-between rounded-lg border border-gold/30 bg-gold-surface px-2.5 py-1.5 text-xs text-gold transition hover:bg-[#272116] hover:border-gold/50 focus:outline-none focus:ring-2 focus:ring-gold/50"
         >
           <span className="flex items-center gap-1.5 font-medium">
-            <span className="text-amber-400">⚡</span>
+            <span className="text-gold">⚡</span>
             <span>
               {typeof balance === "number"
                 ? `${balance.toLocaleString()} credits`
                 : "Loading credits..."}
             </span>
           </span>
-          <span className="text-[10px] uppercase font-semibold text-indigo-400 hover:text-indigo-200">
+          <span className="text-[10px] uppercase font-semibold text-gold-light hover:text-gold">
             Buy / Details →
           </span>
         </button>
@@ -260,31 +261,31 @@ export default function Sidebar({
             <img
               src={userData.photoURL}
               alt={userData.name || "avatar"}
-              className="h-8 w-8 rounded-full shrink-0 ring-1 ring-slate-700"
+              className="h-8 w-8 rounded-full shrink-0 ring-1 ring-nm-border"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-surface border border-gold/40 text-xs font-semibold text-gold">
               {(userData?.name || userData?.email || "U")[0].toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <p className="truncate text-xs font-medium text-slate-200">
+              <p className="truncate text-xs font-medium text-nm-text">
                 {userData?.name || "User"}
               </p>
-              <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[9px] font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/25">
+              <span className="inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-[9px] font-semibold bg-gold-surface text-gold border border-gold/30">
                 {userPlan}
               </span>
             </div>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-nm-text-muted">
               {userData?.email || ""}
             </p>
           </div>
           <button
             onClick={handleLogout}
             title="Sign out"
-            className="shrink-0 rounded-md p-1.5 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="shrink-0 rounded-md p-1.5 text-nm-text-muted transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50"
             aria-label="Sign out"
           >
             <SignOutIcon />

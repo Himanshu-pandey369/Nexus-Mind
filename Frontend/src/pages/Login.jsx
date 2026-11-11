@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvide } from '../../utils/firebase';
 import api from '../../utils/axios';
+import NexusMindLogo from '../components/NexusMindLogo';
 
 function GoogleIcon() {
   return (
@@ -16,7 +17,7 @@ function GoogleIcon() {
 
 function CheckIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-emerald-400 shrink-0">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-gold shrink-0">
       <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" />
     </svg>
   );
@@ -78,25 +79,25 @@ export default function Login({ onLogin }) {
   };
 
   return (
-    <div className="flex min-h-svh bg-white text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+    <div className="flex min-h-svh bg-nm-bg text-nm-text">
       {/* Brand panel (desktop) */}
-      <aside className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-indigo-600 via-violet-600 to-fuchsia-600 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" />
-        <div className="pointer-events-none absolute -right-32 -bottom-32 h-112 w-md rounded-full bg-fuchsia-400/30 blur-3xl" />
+      <aside className="relative hidden w-1/2 overflow-hidden bg-gradient-to-br from-[#1C1708] via-[#131008] to-nm-sidebar p-12 text-nm-text lg:flex lg:flex-col lg:justify-between border-r border-nm-border-subtle">
+        <div className="pointer-events-none absolute -top-24 -left-24 h-96 w-96 rounded-full bg-gold/5 blur-3xl" />
+        <div className="pointer-events-none absolute -right-32 -bottom-32 h-112 w-md rounded-full bg-gold/8 blur-3xl" />
 
         <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-lg font-bold backdrop-blur select-none">
-            N
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-surface border border-gold/30 p-1.5 select-none shadow-sm shrink-0">
+            <NexusMindLogo className="h-full w-full" />
           </div>
-          <span className="text-xl font-semibold tracking-tight">NexusMind</span>
+          <span className="text-xl font-semibold tracking-tight text-nm-text">NexusMind</span>
         </div>
 
         <div className="relative max-w-md space-y-6">
           <div className="space-y-3">
-            <h1 className="text-4xl leading-tight font-semibold tracking-tight">
+            <h1 className="text-4xl leading-tight font-semibold tracking-tight text-nm-text">
               {isSignUp ? 'Start building with intelligent agents.' : 'Where your ideas connect.'}
             </h1>
-            <p className="text-lg text-white/80 leading-relaxed">
+            <p className="text-lg text-nm-text-secondary leading-relaxed">
               {isSignUp
                 ? 'Create presentations, generate multi-file codebases, analyze documents, and research the web with AI.'
                 : 'Capture thoughts, link knowledge, and let your second brain do the heavy lifting.'}
@@ -105,16 +106,16 @@ export default function Login({ onLogin }) {
 
           {/* Value props in signup mode */}
           {isSignUp && (
-            <div className="space-y-2.5 pt-2 border-t border-white/15">
-              <div className="flex items-center gap-2.5 text-sm text-white/90">
+            <div className="space-y-2.5 pt-2 border-t border-nm-border">
+              <div className="flex items-center gap-2.5 text-sm text-nm-text-secondary">
                 <CheckIcon />
-                <span><strong>1,000 free credits</strong> to get started immediately</span>
+                <span><strong className="text-nm-text font-semibold">1,000 free credits</strong> to get started immediately</span>
               </div>
-              <div className="flex items-center gap-2.5 text-sm text-white/90">
+              <div className="flex items-center gap-2.5 text-sm text-nm-text-secondary">
                 <CheckIcon />
                 <span>Full access to Coding, PDF, PPT, and Search Agents</span>
               </div>
-              <div className="flex items-center gap-2.5 text-sm text-white/90">
+              <div className="flex items-center gap-2.5 text-sm text-nm-text-secondary">
                 <CheckIcon />
                 <span>Live artifact preview with interactive code editing</span>
               </div>
@@ -122,25 +123,25 @@ export default function Login({ onLogin }) {
           )}
         </div>
 
-        <p className="relative text-sm text-white/60">© {new Date().getFullYear()} NexusMind. All rights reserved.</p>
+        <p className="relative text-sm text-nm-text-disabled">© {new Date().getFullYear()} NexusMind. All rights reserved.</p>
       </aside>
 
       {/* Form panel */}
-      <main className="flex w-full items-center justify-center px-4 py-12 sm:px-6 lg:w-1/2">
+      <main className="flex w-full items-center justify-center px-4 py-12 sm:px-6 lg:w-1/2 bg-nm-bg">
         <div className="w-full max-w-sm">
           {/* Mobile brand header */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-lg font-bold text-white select-none">
-              N
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gold-surface border border-gold/30 p-1.5 select-none shadow-sm shrink-0">
+              <NexusMindLogo className="h-full w-full" />
             </div>
-            <span className="text-xl font-semibold tracking-tight">NexusMind</span>
+            <span className="text-xl font-semibold tracking-tight text-nm-text">NexusMind</span>
           </div>
 
           {/* Heading */}
-          <h2 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-2xl font-semibold tracking-tight text-nm-text">
             {isSignUp ? 'Create your account' : 'Welcome back'}
           </h2>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mt-2 text-sm text-nm-text-muted">
             {isSignUp
               ? 'Get started with 1,000 free credits to explore NexusMind.'
               : 'Sign in to continue to your workspace.'}
@@ -148,11 +149,11 @@ export default function Login({ onLogin }) {
 
           {/* Benefits pill on Sign Up */}
           {isSignUp && (
-            <div className="mt-5 rounded-xl border border-indigo-500/30 bg-indigo-950/30 p-3.5 text-xs text-indigo-300 flex items-start gap-2.5">
-              <span className="text-amber-400 text-sm leading-none shrink-0">⚡</span>
+            <div className="mt-5 rounded-xl border border-gold/30 bg-gold-surface p-3.5 text-xs text-gold flex items-start gap-2.5">
+              <span className="text-gold text-sm leading-none shrink-0">⚡</span>
               <div>
-                <p className="font-semibold text-slate-200">1,000 Credits Included</p>
-                <p className="mt-0.5 text-slate-400">Sign up with your Google account to instantly claim your free credits.</p>
+                <p className="font-semibold text-nm-text">1,000 Credits Included</p>
+                <p className="mt-0.5 text-nm-text-muted">Sign up with your Google account to instantly claim your free credits.</p>
               </div>
             </div>
           )}
@@ -161,7 +162,7 @@ export default function Login({ onLogin }) {
           {authError && (
             <div
               role="alert"
-              className="mt-5 rounded-xl border border-red-800 bg-red-950/60 p-3 text-xs text-red-300"
+              className="mt-5 rounded-xl border border-nm-error/30 bg-nm-error/10 p-3 text-xs text-nm-error"
             >
               <span className="font-semibold">Error: </span>
               {authError}
@@ -172,11 +173,11 @@ export default function Login({ onLogin }) {
           <button
             type="button"
             disabled={loading}
-            className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:outline-none dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-offset-slate-950 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            className="mt-6 flex w-full items-center justify-center gap-3 rounded-xl border border-nm-border bg-nm-secondary px-4 py-3 text-sm font-medium text-nm-text shadow-sm transition hover:bg-nm-hover hover:border-gold/30 focus:ring-2 focus:ring-gold/50 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             onClick={handleGoogleAuth}
           >
             {loading ? (
-              <span className="h-5 w-5 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+              <span className="h-5 w-5 animate-spin rounded-full border-2 border-gold border-t-transparent" />
             ) : (
               <GoogleIcon />
             )}
@@ -191,33 +192,33 @@ export default function Login({ onLogin }) {
 
           {/* Terms notice on Sign Up */}
           {isSignUp ? (
-            <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-500 leading-relaxed">
+            <p className="mt-4 text-center text-xs text-nm-text-muted leading-relaxed">
               By creating an account, you agree to NexusMind&apos;s Terms of Service and Privacy Policy.
             </p>
           ) : (
-            <p className="mt-4 text-center text-xs text-slate-500 dark:text-slate-500">
+            <p className="mt-4 text-center text-xs text-nm-text-muted">
               Instant login via Google OAuth with no password required.
             </p>
           )}
 
           {/* Divider */}
           <div className="my-6 flex items-center gap-3">
-            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-            <span className="text-[11px] tracking-wider text-slate-400 uppercase">
+            <div className="h-px flex-1 bg-nm-border-subtle" />
+            <span className="text-[11px] tracking-wider text-nm-text-disabled uppercase">
               {isSignUp ? 'Already registered?' : 'New to NexusMind?'}
             </span>
-            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+            <div className="h-px flex-1 bg-nm-border-subtle" />
           </div>
 
           {/* Mode Switcher */}
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
+          <p className="text-center text-sm text-nm-text-muted">
             {isSignUp ? (
               <>
                 Already have an account?{' '}
                 <button
                   type="button"
                   onClick={() => toggleMode(false)}
-                  className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 focus:outline-none underline-offset-2 hover:underline cursor-pointer"
+                  className="font-medium text-gold hover:text-gold-hover focus:outline-none underline-offset-2 hover:underline cursor-pointer"
                 >
                   Sign in
                 </button>
@@ -228,7 +229,7 @@ export default function Login({ onLogin }) {
                 <button
                   type="button"
                   onClick={() => toggleMode(true)}
-                  className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 focus:outline-none underline-offset-2 hover:underline cursor-pointer"
+                  className="font-medium text-gold hover:text-gold-hover focus:outline-none underline-offset-2 hover:underline cursor-pointer"
                 >
                   Sign up
                 </button>

@@ -60,7 +60,7 @@ function ImageIconSvg() {
 
 function ChevronDownIcon() {
   return (
-    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-slate-400" aria-hidden="true">
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 text-nm-text-muted" aria-hidden="true">
       <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
     </svg>
   );
@@ -123,9 +123,9 @@ export default function AgentSelector({ selectedAgent, onSelect, onChange }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="listbox"
-        className="flex items-center gap-1.5 rounded-lg border border-slate-700 bg-slate-900 px-2.5 sm:px-3 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-800 hover:border-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0 select-none"
+        className="flex items-center gap-1.5 rounded-lg border border-nm-border bg-nm-secondary px-2.5 sm:px-3 py-1.5 text-xs font-medium text-nm-text-secondary transition hover:bg-nm-hover hover:border-gold/40 focus:outline-none focus:ring-2 focus:ring-gold/50 shrink-0 select-none"
       >
-        <span className="shrink-0"><CurrentIcon /></span>
+        <span className="shrink-0 text-gold"><CurrentIcon /></span>
         <span className="shrink-0">{current.label}</span>
         <span className="shrink-0"><ChevronDownIcon /></span>
       </button>
@@ -134,7 +134,7 @@ export default function AgentSelector({ selectedAgent, onSelect, onChange }) {
         <div
           role="listbox"
           aria-label="Select agent"
-          className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-slate-700 bg-slate-900 p-1 shadow-xl shadow-black/30"
+          className="absolute right-0 top-full z-50 mt-1 w-52 rounded-xl border border-nm-border bg-nm-elevated p-1 shadow-2xl shadow-black/60"
         >
           {AGENTS.map((agent) => {
             const { Icon: AgentIcon } = agent;
@@ -145,16 +145,16 @@ export default function AgentSelector({ selectedAgent, onSelect, onChange }) {
                 role="option"
                 aria-selected={isSelected}
                 onClick={() => handleSelect(agent.id)}
-                className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+                className={`flex w-full items-start gap-2.5 rounded-lg px-3 py-2 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold/50 ${
                   isSelected
-                    ? "bg-indigo-600/20 text-indigo-300"
-                    : "text-slate-300 hover:bg-slate-800"
+                    ? "bg-gold-surface text-gold border border-gold/30"
+                    : "text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text border border-transparent"
                 }`}
               >
-                <span className="mt-0.5 shrink-0"><AgentIcon /></span>
+                <span className="mt-0.5 shrink-0 text-gold"><AgentIcon /></span>
                 <div>
-                  <div className="font-medium">{agent.label}</div>
-                  <div className="text-slate-500">{agent.description}</div>
+                  <div className="font-medium text-nm-text">{agent.label}</div>
+                  <div className="text-nm-text-muted">{agent.description}</div>
                 </div>
               </button>
             );

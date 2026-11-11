@@ -96,8 +96,8 @@ function CopyButton({ text }) {
     <button
       onClick={handleCopy}
       aria-label={copied ? "Copied" : "Copy file content"}
-      className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition select-none focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
-        copied ? "bg-indigo-600 text-white" : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+      className={`flex items-center gap-1 rounded px-2 py-1 text-[11px] font-medium transition select-none focus:outline-none focus:ring-2 focus:ring-gold/50 ${
+        copied ? "bg-gold text-nm-sidebar font-medium" : "bg-nm-elevated text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text"
       }`}
     >
       {copied ? <><CheckIcon /> Copied</> : <><CopyIcon /> Copy</>}
@@ -119,7 +119,7 @@ function ProjectArtifact({ projectArtifacts }) {
 
   if (allFiles.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 text-sm text-slate-500">
+      <div className="flex flex-1 items-center justify-center p-6 text-sm text-nm-text-muted">
         No files in this artifact.
       </div>
     );
@@ -172,7 +172,7 @@ function ProjectArtifact({ projectArtifacts }) {
         title="Project preview"
         src={url}
         sandbox="allow-scripts allow-same-origin"
-        className="h-full w-full rounded-lg border border-slate-700 bg-white"
+        className="h-full w-full rounded-lg border border-nm-border bg-white"
       />
     );
   };
@@ -180,8 +180,8 @@ function ProjectArtifact({ projectArtifacts }) {
   return (
     <div className="flex h-full flex-col min-h-0">
       {/* ── File list — horizontal scroll on mobile ── */}
-      <div className="shrink-0 border-b border-slate-800 px-3 py-2">
-        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+      <div className="shrink-0 border-b border-nm-border-subtle bg-nm-sidebar px-3 py-2">
+        <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-nm-text-muted">
           Files ({allFiles.length})
         </p>
         <div className="flex flex-col gap-0.5 max-h-32 overflow-y-auto sm:max-h-none">
@@ -189,10 +189,10 @@ function ProjectArtifact({ projectArtifacts }) {
             <button
               key={`${file.name}-${idx}`}
               onClick={() => { setSelectedIdx(idx); setTab("code"); }}
-              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 ${
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition focus:outline-none focus:ring-2 focus:ring-inset focus:ring-gold/50 ${
                 idx === selectedIdx
-                  ? "bg-indigo-600/20 text-indigo-300 border border-indigo-500/30"
-                  : "text-slate-300 hover:bg-slate-800 border border-transparent"
+                  ? "bg-gold-surface text-gold border border-gold/30"
+                  : "text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text border border-transparent"
               }`}
               title={file.name}
             >
@@ -204,14 +204,14 @@ function ProjectArtifact({ projectArtifacts }) {
       </div>
 
       {/* ── Code / Preview tabs ── */}
-      <div className="flex shrink-0 gap-1 border-b border-slate-800 px-3 pt-2">
+      <div className="flex shrink-0 gap-1 border-b border-nm-border-subtle bg-nm-sidebar px-3 pt-2">
         {canPreview && (
           <button
             onClick={() => setTab("preview")}
-            className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-gold/50 ${
               activeTab === "preview"
-                ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-gold text-gold bg-nm-elevated"
+                : "text-nm-text-muted hover:text-nm-text"
             }`}
           >
             <EyeIcon />
@@ -220,10 +220,10 @@ function ProjectArtifact({ projectArtifacts }) {
         )}
         <button
           onClick={() => setTab("code")}
-          className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+          className={`flex items-center gap-1.5 rounded-t-md px-3 py-1.5 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-gold/50 ${
             activeTab === "code"
-              ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-              : "text-slate-400 hover:text-slate-200"
+              ? "border-b-2 border-gold text-gold bg-nm-elevated"
+              : "text-nm-text-muted hover:text-nm-text"
           }`}
         >
           <CodeBracketIcon className="h-3.5 w-3.5" />
@@ -235,8 +235,8 @@ function ProjectArtifact({ projectArtifacts }) {
       {activeTab === "code" ? (
         <div className="flex flex-1 flex-col min-h-0">
           {/* File header with name + copy */}
-          <div className="flex shrink-0 items-center justify-between bg-slate-800/60 px-3 py-1.5">
-            <span className="font-mono text-[11px] text-slate-400 truncate mr-2">{currentFile.name}</span>
+          <div className="flex shrink-0 items-center justify-between bg-nm-elevated border-b border-nm-border-subtle px-3 py-1.5">
+            <span className="font-mono text-[11px] text-nm-text-muted truncate mr-2">{currentFile.name}</span>
             <CopyButton text={currentFile.content} />
           </div>
           {/* Syntax-highlighted content — wraps on small screens */}
@@ -285,7 +285,7 @@ function LegacyCodeArtifact({ content }) {
         title="Code preview"
         src={url}
         sandbox="allow-same-origin"
-        className="h-full w-full rounded-lg border border-slate-700 bg-white"
+        className="h-full w-full rounded-lg border border-nm-border bg-white"
       />
     );
   };
@@ -293,13 +293,13 @@ function LegacyCodeArtifact({ content }) {
   return (
     <div className="flex h-full flex-col min-h-0">
       {(hasPreview) && (
-        <div className="flex shrink-0 gap-1 border-b border-slate-800 px-3 pt-2">
+        <div className="flex shrink-0 gap-1 border-b border-nm-border-subtle bg-nm-sidebar px-3 pt-2">
           <button
             onClick={() => setTab("preview")}
-            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-gold/50 ${
               tab === "preview"
-                ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-gold text-gold bg-nm-elevated"
+                : "text-nm-text-muted hover:text-nm-text"
             }`}
           >
             <EyeIcon />
@@ -307,10 +307,10 @@ function LegacyCodeArtifact({ content }) {
           </button>
           <button
             onClick={() => setTab("code")}
-            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+            className={`flex items-center gap-1.5 rounded-t-md px-3 py-2 text-xs font-medium transition focus:outline-none focus:ring-2 focus:ring-gold/50 ${
               tab === "code"
-                ? "border-b-2 border-indigo-500 text-indigo-400 bg-slate-800"
-                : "text-slate-400 hover:text-slate-200"
+                ? "border-b-2 border-gold text-gold bg-nm-elevated"
+                : "text-nm-text-muted hover:text-nm-text"
             }`}
           >
             <CodeBracketIcon className="h-3.5 w-3.5" />
@@ -322,7 +322,7 @@ function LegacyCodeArtifact({ content }) {
         {tab === "preview" && hasPreview
           ? renderPreview()
           : (
-            <pre className="h-full overflow-auto rounded-lg bg-slate-900 p-4 text-xs leading-relaxed text-slate-300 font-mono whitespace-pre-wrap break-words">
+            <pre className="h-full overflow-auto rounded-lg border border-nm-border bg-nm-secondary p-4 text-xs leading-relaxed text-nm-text-secondary font-mono whitespace-pre-wrap break-words">
               <code>{content || ""}</code>
             </pre>
           )}
@@ -349,14 +349,14 @@ export default function ArtifactPanel({ artifact, onClose }) {
   const badge = isProject ? "project" : artifact?.type ?? null;
 
   return (
-    <aside className="flex h-full flex-col bg-slate-950 border-l border-slate-800">
+    <aside className="flex h-full flex-col bg-nm-bg border-l border-nm-border-subtle">
       {/* ── Panel header ── */}
-      <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-nm-border-subtle px-4 py-3 bg-nm-bg">
         <div className="flex items-center gap-2">
-          <CodeBracketIcon />
-          <h2 className="text-sm font-semibold text-slate-200">Artifact</h2>
+          <span className="text-gold"><CodeBracketIcon /></span>
+          <h2 className="text-sm font-semibold text-nm-text">Artifact</h2>
           {badge && (
-            <span className="rounded-full bg-indigo-600/20 px-2 py-0.5 text-xs font-medium text-indigo-400 capitalize">
+            <span className="rounded-full bg-gold-surface border border-gold/30 px-2 py-0.5 text-xs font-medium text-gold capitalize">
               {badge}
             </span>
           )}
@@ -364,7 +364,7 @@ export default function ArtifactPanel({ artifact, onClose }) {
         <button
           onClick={onClose}
           aria-label="Close artifact panel"
-          className="rounded-md p-1 text-slate-400 transition hover:bg-slate-800 hover:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="rounded-md p-1 text-nm-text-muted transition hover:bg-nm-hover hover:text-nm-text focus:outline-none focus:ring-2 focus:ring-gold/50"
         >
           <CloseIcon />
         </button>
@@ -374,8 +374,8 @@ export default function ArtifactPanel({ artifact, onClose }) {
       {!artifact && (
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center select-none">
           <ArtifactEmptyIcon />
-          <p className="mt-4 text-sm font-medium text-slate-400">No artifact yet</p>
-          <p className="mt-1 text-xs text-slate-600">
+          <p className="mt-4 text-sm font-medium text-nm-text-muted">No artifact yet</p>
+          <p className="mt-1 text-xs text-nm-text-disabled">
             Ask NexusMind to write code, create a presentation, or generate an image.
           </p>
         </div>

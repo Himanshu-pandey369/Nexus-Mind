@@ -3,7 +3,6 @@ import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchCreditBalance,
-  fetchCreditHistory,
   fetchPaymentHistory,
   setCreditBalance,
 } from "../redux/creditsSlice";
@@ -14,7 +13,7 @@ import api from "../../utils/axios";
 
 function CoinsIcon() {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-amber-400">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5 text-gold">
       <circle cx="8" cy="8" r="6" />
       <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
       <path d="M7 6h1v4" />
@@ -33,7 +32,7 @@ function CloseIcon() {
 
 function LockIcon() {
   return (
-    <svg className="w-3 h-3 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+    <svg className="w-3 h-3 text-nm-success shrink-0" fill="currentColor" viewBox="0 0 20 20">
       <path fillRule="evenodd" d="M10 1a4.5 4.5 0 0 0-4.5 4.5V9H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-.5V5.5A4.5 4.5 0 0 0 10 1zm3 8V5.5a3 3 0 1 0-6 0V9h6z" clipRule="evenodd" />
     </svg>
   );
@@ -326,7 +325,7 @@ export default function CreditModal({ isOpen, onClose }) {
           email: userData?.email || "",
         },
         theme: {
-          color: "#4f46e5",
+          color: "#C6A66B",
         },
         modal: {
           ondismiss: () => {
@@ -377,27 +376,27 @@ export default function CreditModal({ isOpen, onClose }) {
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-4 md:p-6 overflow-y-auto"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-labelledby="credit-modal-title"
     >
       <div
-        className="relative w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] sm:max-h-[85vh] flex flex-col rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden my-auto min-w-0"
+        className="relative w-full max-w-full sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl max-h-[90vh] sm:max-h-[85vh] flex flex-col rounded-2xl border border-nm-border bg-nm-bg shadow-2xl overflow-hidden my-auto min-w-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 sm:px-6 py-4 shrink-0 bg-slate-900">
+        <div className="flex items-center justify-between border-b border-nm-border-subtle px-4 sm:px-6 py-4 shrink-0 bg-nm-bg">
           <div className="flex items-center gap-2.5 min-w-0">
             <CoinsIcon />
-            <h2 id="credit-modal-title" className="text-base font-semibold text-slate-100 truncate">
+            <h2 id="credit-modal-title" className="text-base font-semibold text-nm-text truncate">
               Credits & Usage
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-slate-200 transition focus:outline-none focus:ring-2 focus:ring-indigo-500 shrink-0"
+            className="rounded-lg p-1.5 text-nm-text-muted hover:bg-nm-hover hover:text-nm-text transition focus:outline-none focus:ring-2 focus:ring-gold/50 shrink-0"
             aria-label="Close"
           >
             <CloseIcon />
@@ -407,20 +406,20 @@ export default function CreditModal({ isOpen, onClose }) {
         {/* Content body */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 sm:space-y-6 min-w-0">
           {/* Current balance card */}
-          <div className="rounded-xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/60 to-purple-950/60 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
+          <div className="rounded-xl border border-gold/30 bg-gradient-to-r from-gold-surface to-[#1A160F] p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-w-0">
             <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wider text-slate-400">
+              <p className="text-xs uppercase tracking-wider text-nm-text-muted">
                 Current Available Balance
               </p>
               <div className="mt-1 flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                <span className="text-2xl sm:text-3xl font-extrabold text-nm-text tracking-tight">
                   {typeof balance === "number" ? balance.toLocaleString() : "..."}
                 </span>
-                <span className="text-xs text-indigo-300 font-medium">credits</span>
+                <span className="text-xs text-gold font-medium">credits</span>
               </div>
             </div>
             <div className="shrink-0 sm:text-right">
-              <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+              <span className="inline-flex items-center rounded-full bg-gold-surface px-3 py-1 text-xs font-medium text-gold border border-gold/30 whitespace-nowrap">
                 Active • {userPlan} Plan
               </span>
             </div>
@@ -431,12 +430,12 @@ export default function CreditModal({ isOpen, onClose }) {
             <div
               className={`rounded-xl border p-3 sm:p-4 text-xs flex items-center justify-between gap-3 transition ${
                 notice.type === "success"
-                  ? "border-emerald-500/30 bg-emerald-950/40 text-emerald-200"
+                  ? "border-nm-success/30 bg-nm-success/10 text-nm-success"
                   : notice.type === "error"
-                  ? "border-red-500/30 bg-red-950/40 text-red-200"
+                  ? "border-nm-error/30 bg-nm-error/10 text-nm-error"
                   : notice.type === "warning"
-                  ? "border-amber-500/30 bg-amber-950/40 text-amber-200"
-                  : "border-indigo-500/30 bg-indigo-950/40 text-indigo-200"
+                  ? "border-nm-warning/30 bg-nm-warning/10 text-nm-warning"
+                  : "border-gold/30 bg-gold-surface text-gold"
               }`}
             >
               <div className="flex items-center gap-2 min-w-0">
@@ -457,7 +456,7 @@ export default function CreditModal({ isOpen, onClose }) {
                     type="button"
                     onClick={notice.retryAction.onClick}
                     disabled={verifying || retryingFulfillment}
-                    className="rounded-lg bg-indigo-600 hover:bg-indigo-500 px-3 py-1 text-xs font-semibold text-white transition disabled:opacity-50"
+                    className="rounded-lg bg-gold hover:bg-gold-hover px-3 py-1 text-xs font-semibold text-nm-sidebar transition disabled:opacity-50"
                   >
                     {retryingFulfillment ? "Processing..." : notice.retryAction.label}
                   </button>
@@ -465,7 +464,7 @@ export default function CreditModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={() => setNotice(null)}
-                  className="text-slate-400 hover:text-slate-200 p-1"
+                  className="text-nm-text-muted hover:text-nm-text p-1"
                   aria-label="Dismiss notice"
                 >
                   <CloseIcon />
@@ -477,10 +476,10 @@ export default function CreditModal({ isOpen, onClose }) {
           {/* Top Up Credits Section */}
           <div className="min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-slate-200">
+              <h3 className="text-sm font-semibold text-nm-text">
                 Top Up Credits
               </h3>
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-nm-success bg-nm-success/10 px-2.5 py-0.5 rounded-full border border-nm-success/20 whitespace-nowrap">
                 <LockIcon />
                 Secured by Razorpay
               </span>
@@ -496,37 +495,37 @@ export default function CreditModal({ isOpen, onClose }) {
                     key={tier.id || tier.name}
                     className={`rounded-xl border p-4 sm:p-4 md:p-5 flex flex-col justify-between h-full min-w-0 transition ${
                       tier.popular
-                        ? "border-indigo-500/60 bg-indigo-950/20 shadow-sm"
-                        : "border-slate-800 bg-slate-950/50"
+                        ? "border-gold/40 bg-gold-surface shadow-sm"
+                        : "border-nm-border bg-nm-secondary/60"
                     }`}
                   >
                     <div className="min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <h4 className="text-xs sm:text-sm font-semibold text-slate-200 truncate">
+                        <h4 className="text-xs sm:text-sm font-semibold text-nm-text truncate">
                           {tier.name}
                         </h4>
                         {tier.popular && (
-                          <span className="shrink-0 text-[9px] uppercase font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                          <span className="shrink-0 text-[9px] uppercase font-bold text-gold bg-gold/15 px-1.5 py-0.5 rounded border border-gold/30">
                             Popular
                           </span>
                         )}
                       </div>
-                      <div className="mt-2 text-xl sm:text-2xl font-bold text-white flex items-baseline gap-1">
+                      <div className="mt-2 text-xl sm:text-2xl font-bold text-nm-text flex items-baseline gap-1">
                         {totalCredits.toLocaleString()}{" "}
-                        <span className="text-xs font-normal text-slate-400">
+                        <span className="text-xs font-normal text-nm-text-muted">
                           credits
                         </span>
                       </div>
                       {tier.bonusCredits > 0 ? (
-                        <p className="text-[11px] text-emerald-400 font-medium mt-0.5">
+                        <p className="text-[11px] text-gold font-medium mt-0.5">
                           +{tier.bonusCredits.toLocaleString()} bonus included
                         </p>
                       ) : (
-                        <p className="text-[11px] text-slate-400 mt-0.5">
+                        <p className="text-[11px] text-nm-text-muted mt-0.5">
                           Standard package
                         </p>
                       )}
-                      <p className="text-xs sm:text-sm font-semibold text-slate-200 mt-2">
+                      <p className="text-xs sm:text-sm font-semibold text-nm-text mt-2">
                         {formatPrice(tier.price, tier.currency)}
                       </p>
                     </div>
@@ -537,17 +536,17 @@ export default function CreditModal({ isOpen, onClose }) {
                       disabled={isAnyOperationActive}
                       className={`mt-4 w-full rounded-lg py-1.5 sm:py-2 text-xs font-semibold transition flex items-center justify-center gap-2 border ${
                         isThisPackageActive
-                          ? "bg-indigo-600/80 text-white cursor-wait border-indigo-500"
+                          ? "bg-gold/80 text-nm-sidebar cursor-wait border-gold"
                           : isAnyOperationActive
-                          ? "bg-slate-800 text-slate-500 cursor-not-allowed border-slate-700/50"
+                          ? "bg-nm-elevated text-nm-text-disabled cursor-not-allowed border-nm-border-subtle"
                           : tier.popular
-                          ? "bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500"
+                          ? "bg-gold hover:bg-gold-hover text-nm-sidebar font-semibold border-gold/50 shadow-sm focus:outline-none focus:ring-2 focus:ring-gold/50"
+                          : "bg-nm-elevated hover:bg-nm-hover text-nm-text border-nm-border focus:outline-none focus:ring-2 focus:ring-gold/50"
                       }`}
                     >
                       {isThisPackageActive ? (
                         <>
-                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                          <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-nm-sidebar border-t-transparent" />
                           <span>{verifying ? "Verifying..." : "Opening..."}</span>
                         </>
                       ) : (
@@ -563,11 +562,11 @@ export default function CreditModal({ isOpen, onClose }) {
           {/* Payment Transaction History */}
           <div className="min-w-0">
             <div className="flex items-center justify-between gap-2 mb-3">
-              <h3 className="text-sm font-semibold text-slate-200">
+              <h3 className="text-sm font-semibold text-nm-text">
                 Transaction History
               </h3>
               {paymentHistoryTotal > 0 && (
-                <span className="text-[11px] text-slate-400">
+                <span className="text-[11px] text-nm-text-muted">
                   {paymentHistoryTotal} {paymentHistoryTotal === 1 ? "order" : "orders"}
                 </span>
               )}
@@ -575,33 +574,33 @@ export default function CreditModal({ isOpen, onClose }) {
 
             {/* Error state */}
             {paymentHistoryError ? (
-              <div className="rounded-xl border border-red-500/30 bg-red-950/30 p-4 text-xs text-red-300 flex items-center justify-between gap-3">
+              <div className="rounded-xl border border-nm-error/30 bg-nm-error/10 p-4 text-xs text-nm-error flex items-center justify-between gap-3">
                 <span>Failed to load transaction history: {paymentHistoryError}</span>
                 <button
                   type="button"
                   onClick={() => dispatch(fetchPaymentHistory({ page: paymentHistoryPage, limit: 10 }))}
-                  className="rounded-lg bg-red-600 hover:bg-red-500 px-3 py-1 font-semibold text-white transition shrink-0"
+                  className="rounded-lg bg-nm-error hover:bg-nm-error/85 px-3 py-1 font-semibold text-white transition shrink-0"
                 >
                   Retry
                 </button>
               </div>
             ) : paymentHistoryLoading ? (
               /* Loading state */
-              <div className="flex items-center justify-center py-8 text-slate-400 text-xs">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent mr-2" />
+              <div className="flex items-center justify-center py-8 text-nm-text-muted text-xs">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-gold border-t-transparent mr-2" />
                 Loading transaction history...
               </div>
             ) : paymentHistory.length === 0 ? (
               /* Empty state */
-              <div className="rounded-xl border border-slate-800 bg-slate-950/40 py-8 text-center text-xs text-slate-500">
+              <div className="rounded-xl border border-nm-border bg-nm-secondary/40 py-8 text-center text-xs text-nm-text-muted">
                 No payment transactions recorded yet.
               </div>
             ) : (
               /* Populated state */
               <div className="space-y-3 min-w-0">
-                <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-950/40 min-w-0">
+                <div className="overflow-x-auto rounded-xl border border-nm-border bg-nm-secondary/40 min-w-0">
                   <table className="w-full text-left text-xs min-w-[540px] sm:min-w-full border-collapse">
-                    <thead className="bg-slate-800/60 text-slate-400 border-b border-slate-800">
+                    <thead className="bg-nm-elevated text-nm-text-muted border-b border-nm-border">
                       <tr>
                         <th className="px-3 sm:px-4 py-2.5 font-medium">Package</th>
                         <th className="px-3 sm:px-4 py-2.5 font-medium">Amount</th>
@@ -610,30 +609,30 @@ export default function CreditModal({ isOpen, onClose }) {
                         <th className="px-3 sm:px-4 py-2.5 font-medium">Date</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    <tbody className="divide-y divide-nm-border-subtle text-nm-text-secondary">
                       {paymentHistory.map((tx) => (
-                        <tr key={tx.id || tx.orderId} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={tx.id || tx.orderId} className="hover:bg-nm-hover/40 transition-colors">
                           <td className="px-3 sm:px-4 py-2.5">
-                            <span className="font-medium text-slate-200">
+                            <span className="font-medium text-nm-text">
                               {tx.packageName || tx.packageId || "Credit Top-Up"}
                             </span>
                           </td>
-                          <td className="px-3 sm:px-4 py-2.5 font-mono text-slate-200">
+                          <td className="px-3 sm:px-4 py-2.5 font-mono text-nm-text">
                             {formatPrice(tx.amount, tx.currency)}
                           </td>
-                          <td className="px-3 sm:px-4 py-2.5 font-mono text-emerald-400">
+                          <td className="px-3 sm:px-4 py-2.5 font-mono text-gold">
                             +{tx.credits?.toLocaleString() || "0"}
                           </td>
                           <td className="px-3 sm:px-4 py-2.5">
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${
                                 tx.status === "fulfilled"
-                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                                  ? "bg-nm-success/10 text-nm-success border-nm-success/20"
                                   : tx.status === "verified"
-                                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                                  ? "bg-gold/10 text-gold border-gold/20"
                                   : tx.status === "failed"
-                                  ? "bg-red-500/10 text-red-400 border-red-500/20"
-                                  : "bg-slate-500/10 text-slate-400 border-slate-500/20"
+                                  ? "bg-nm-error/10 text-nm-error border-nm-error/20"
+                                  : "bg-nm-elevated text-nm-text-muted border-nm-border"
                               }`}
                             >
                               {tx.status?.toUpperCase() || "PENDING"}
@@ -643,13 +642,13 @@ export default function CreditModal({ isOpen, onClose }) {
                                 type="button"
                                 onClick={() => handleRetryFulfillment(tx.orderId)}
                                 disabled={retryingFulfillment}
-                                className="ml-2 underline text-[10px] text-amber-300 hover:text-amber-200 disabled:opacity-50"
+                                className="ml-2 underline text-[10px] text-gold hover:text-gold-light disabled:opacity-50"
                               >
                                 Claim
                               </button>
                             )}
                           </td>
-                          <td className="px-3 sm:px-4 py-2.5 text-slate-400 whitespace-nowrap">
+                          <td className="px-3 sm:px-4 py-2.5 text-nm-text-muted whitespace-nowrap">
                             {tx.createdAt
                               ? new Date(tx.createdAt).toLocaleDateString([], {
                                   month: "short",
@@ -668,7 +667,7 @@ export default function CreditModal({ isOpen, onClose }) {
 
                 {/* Pagination controls */}
                 {paymentHistoryTotalPages > 1 && (
-                  <div className="flex items-center justify-between text-xs text-slate-400 px-1 pt-1">
+                  <div className="flex items-center justify-between text-xs text-nm-text-muted px-1 pt-1">
                     <span>
                       Page {paymentHistoryPage} of {paymentHistoryTotalPages}
                     </span>
@@ -684,7 +683,7 @@ export default function CreditModal({ isOpen, onClose }) {
                           )
                         }
                         disabled={paymentHistoryPage <= 1 || paymentHistoryLoading}
-                        className="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        className="rounded-lg border border-nm-border bg-nm-elevated px-2.5 py-1 text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition"
                       >
                         Previous
                       </button>
@@ -705,7 +704,7 @@ export default function CreditModal({ isOpen, onClose }) {
                           paymentHistoryPage >= paymentHistoryTotalPages ||
                           paymentHistoryLoading
                         }
-                        className="rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-slate-300 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        className="rounded-lg border border-nm-border bg-nm-elevated px-2.5 py-1 text-nm-text-secondary hover:bg-nm-hover hover:text-nm-text disabled:opacity-40 disabled:cursor-not-allowed transition"
                       >
                         Next
                       </button>
