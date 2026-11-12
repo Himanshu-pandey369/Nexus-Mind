@@ -1,0 +1,12 @@
+{
+  "name": "nexusmind-shared",
+  "version": "1.0.0",
+  "description": "Shared Redis connection and middleware utilities",
+  "type": "module",
+  "main": "redis/redis.js",
+  "dependencies": {
+    "express-rate-limit": "^8.7.4",
+    "ioredis": "^6.0.0",
+    "rate-limit-redis": "^6.0.2"
+  }
+}

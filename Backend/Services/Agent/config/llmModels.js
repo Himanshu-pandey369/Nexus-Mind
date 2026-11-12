@@ -1,8 +1,9 @@
-import { ChatGroq } from "@langchain/groq";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { ChatOpenRouter } from "@langchain/openrouter";
-// Groq — fast model used for chat, search summarisation, and routing
-const groq = new ChatGroq({
+
+// OpenRouter — primary model for chat, search summarisation, routing, PDF, PPT, Vision prompt enhancement
+// "openai/gpt-oss-120b" is an OpenRouter model identifier; use ChatOpenRouter (not ChatGroq) for this model.
+const groq = new ChatOpenRouter({
   model: "openai/gpt-oss-120b",
 });
 

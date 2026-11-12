@@ -15,6 +15,11 @@ try {
   process.exit(1);
 }
 
+// Health check route
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "auth" });
+});
+
 // Authentication routes
 app.use("/auth", authRouter);
 

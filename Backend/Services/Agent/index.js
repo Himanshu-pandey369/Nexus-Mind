@@ -18,6 +18,10 @@ app.get("/", (req, res) => {
   res.json({ message: "Hello from agent" });
 });
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "agent" });
+});
+
 app.use("/agent", agentRouter);
 // Mount image routes under /agent/images (for Gateway proxy) and /images (for direct service calls)
 app.use("/agent/images", imageRoutes);

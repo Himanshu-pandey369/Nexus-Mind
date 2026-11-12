@@ -1,5 +1,22 @@
+# Local Development Infrastructure
+# Runs only Redis for local development.
+# Start individual services manually with: npm run dev (in each service directory)
+# For full Docker stack, use: docker compose -f docker-compose.prod.yml up --build
+
 services:
   redis:
-    image: redis
+    image: redis:7-alpine
+    container_name: nexusmind-redis-dev
+    restart: unless-stopped
     ports:
-      - "6379:6379"  
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_dev_data:

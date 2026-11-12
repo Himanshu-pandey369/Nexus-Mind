@@ -15,10 +15,16 @@ try {
 
 app.use("/chat", chatRouter);
 
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", service: "chat" });
+});
+
 app.get("/testing", (req, res) => {
   res.json("hello from chat");
 });
 
-app.listen(process.env.PORT, () => {
-  console.log(`Chat service started on port ${process.env.PORT}`);
+const PORT = process.env.PORT || 8002;
+
+app.listen(PORT, () => {
+  console.log(`Chat service started on port ${PORT}`);
 });
