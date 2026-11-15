@@ -21,6 +21,11 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 
+const AUTH_SERVICE = process.env.AUTH_SERVICE || "http://127.0.0.1:8001";
+const CHAT_SERVICE = process.env.CHAT_SERVICE || "http://127.0.0.1:8002";
+const PAYMENT_SERVICE = process.env.PAYMENT_SERVICE || "http://127.0.0.1:8003";
+const AGENT_SERVICE = process.env.AGENT_SERVICE || "http://127.0.0.1:8083";
+
 // Configure trust proxy safely according to deployment topology
 // When running behind reverse proxy (e.g. Nginx, Cloudflare), set TRUST_PROXY=true or number of hops
 const trustProxySetting = process.env.TRUST_PROXY;
@@ -79,7 +84,7 @@ app.post("/test", (req, res) => {
 app.use(
   "/auth",
   authLimiter,
-  proxy(process.env.AUTH_SERVICE, {
+  proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/auth${req.url}`,
   })
 );
@@ -90,7 +95,7 @@ app.use(
   "/chat",
   authMiddleware,
   aiChatLimiter,
-  proxy(process.env.CHAT_SERVICE, {
+  proxy(CHAT_SERVICE, {
     proxyReqPathResolver: (req) => `/chat${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
@@ -103,7 +108,7 @@ app.use(
   "/agent",
   authMiddleware,
   agentRateLimitMiddleware,
-  proxy(process.env.AGENT_SERVICE, {
+  proxy(AGENT_SERVICE, {
     limit: "15mb",
     proxyReqPathResolver: (req) => `/agent${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -116,7 +121,7 @@ app.use(
 app.use(
   "/credits",
   authMiddleware,
-  proxy(process.env.AUTH_SERVICE, {
+  proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/credits${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
@@ -128,7 +133,7 @@ app.use(
 app.use(
   "/usage",
   authMiddleware,
-  proxy(process.env.AUTH_SERVICE, {
+  proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/usage${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
@@ -140,7 +145,7 @@ app.use(
 // Public: Credit packages
 app.use(
   "/payment/packages",
-  proxy(process.env.PAYMENT_SERVICE, {
+  proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: () => `/payment/packages`,
   })
 );
@@ -148,7 +153,7 @@ app.use(
 // Public / Server-to-server: Razorpay Webhook (unauthenticated, forwards raw body and signature)
 app.use(
   "/payment/webhook",
-  proxy(process.env.PAYMENT_SERVICE, {
+  proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: () => `/payment/webhook`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       if (srcReq.headers["x-razorpay-signature"]) {
@@ -168,7 +173,7 @@ app.use(
   "/payment",
   authMiddleware,
   paymentLimiter,
-  proxy(process.env.PAYMENT_SERVICE, {
+  proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: (req) => `/payment${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;

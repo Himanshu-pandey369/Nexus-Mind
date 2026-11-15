@@ -1,0 +1,63 @@
+# Multi-stage Dockerfile for All-in-One NexusMind Backend on Render
+# Build context: 'Backend' directory
+# Build command: docker build -f Dockerfile.render -t nexusmind-backend .
+
+# ----------------- Dependencies Stage -----------------
+FROM node:20-alpine AS deps
+WORKDIR /app
+
+# Copy package manifests
+COPY package*.json ./
+COPY Shared/package*.json ./Shared/
+COPY Gateway/package*.json ./Gateway/
+COPY Services/auth/package*.json ./Services/auth/
+COPY Services/Chat/package*.json ./Services/Chat/
+COPY Services/Payment/package*.json ./Services/Payment/
+COPY Services/Agent/package*.json ./Services/Agent/
+
+# Install dependencies for each module/service
+RUN npm install --omit=dev
+RUN npm install --prefix ./Gateway --omit=dev
+RUN npm install --prefix ./Services/auth --omit=dev
+RUN npm install --prefix ./Services/Chat --omit=dev
+RUN npm install --prefix ./Services/Payment --omit=dev
+RUN npm install --prefix ./Services/Agent --omit=dev
+
+# ----------------- Runner Stage -----------------
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV PORT=8000
+
+# Install PM2 globally to supervise all 5 microservices in one container
+RUN npm install -g pm2
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/Gateway/node_modules ./Gateway/node_modules
+COPY --from=deps /app/Services/auth/node_modules ./Services/auth/node_modules
+COPY --from=deps /app/Services/Chat/node_modules ./Services/Chat/node_modules
+COPY --from=deps /app/Services/Payment/node_modules ./Services/Payment/node_modules
+COPY --from=deps /app/Services/Agent/node_modules ./Services/Agent/node_modules
+
+# Copy application sources
+COPY package*.json ./
+COPY Shared/ ./Shared/
+COPY Gateway/ ./Gateway/
+COPY Services/ ./Services/
+COPY pm2.process.config.cjs ./
+
+# Ensure node user owns the app directory
+RUN chown -R node:node /app
+USER node
+
+# Expose default port (Render will dynamically bind to PORT)
+EXPOSE 8000
+
+# Healthcheck targeting the gateway health endpoint
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT:-8000}/health || exit 1
+
+# Start all services using PM2 runtime
+CMD ["pm2-runtime", "pm2.process.config.cjs"]

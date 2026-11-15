@@ -168,3 +168,117 @@ docker compose -f docker-compose.prod.yml ps
 | Chat | (internal) GET http://chat-service:8002/health |
 | Payment | (internal) GET http://payment-service:8003/health |
 | Agent | (internal) GET http://agent-service:8083/health |
+
+---
+
+## Deploying Backend to Render (All-in-One / Free-Tier Friendly)
+
+NexusMind backend can be deployed to [Render](https://render.com) using a single Docker Web Service. This packages the API Gateway and all 4 microservices (`auth`, `chat`, `payment`, `agent`) into an orchestrated container managed by `pm2-runtime`.
+
+### Advantages
+- **$0 / Month**: Operates entirely within Render's free Web Service tier (750 free hours/month).
+- **Zero Networking Complexity**: Internal microservices communicate securely over `localhost:8001`, `localhost:8002`, `localhost:8003`, and `localhost:8083`. Only the Gateway is exposed to Render on `$PORT`.
+- **Automatic Process Supervision**: If any individual microservice encounters an error, PM2 restarts it immediately without restarting the entire container.
+
+---
+
+### Step 1: External Services Setup
+
+#### 1. MongoDB Atlas Network Access
+Render services use dynamic outbound IP addresses:
+1. Go to **MongoDB Atlas** > **Network Access**.
+2. Click **Add IP Address** > select **Allow Access from Anywhere** (`0.0.0.0/0`).
+3. Confirm your database connection strings for `auth`, `chat`, `payment`, and `agent` (or use a single MongoDB cluster with different database names in the URI path).
+
+#### 2. Redis Setup (Upstash Redis)
+Render charges for Redis, but [Upstash](https://upstash.com) provides a free serverless Redis database:
+1. Create a free database at **console.upstash.com**.
+2. Copy the **Node.js (ioredis)** connection string (`rediss://default:<password>@<host>:6379`).
+
+---
+
+### Step 2: Deploying to Render
+
+You can deploy using either Render Blueprints (automated) or the Render Web UI (manual).
+
+#### Method A: Blueprint Deployment (Fastest)
+1. Push your repository to GitHub (ensure `render.yaml`, `Backend/Dockerfile.render`, and `Backend/pm2.process.config.cjs` are committed).
+2. Go to the [Render Dashboard](https://dashboard.render.com).
+3. Click **New +** > **Blueprint**.
+4. Connect your `NexusMind` repository.
+5. Render will automatically detect `render.yaml` and prompt you to input the environment variables.
+6. Click **Apply**.
+
+#### Method B: Manual Web Service Deployment
+1. Go to the [Render Dashboard](https://dashboard.render.com) > **New +** > **Web Service**.
+2. Connect your GitHub repository.
+3. Configure the service settings:
+   - **Name**: `nexusmind-backend`
+   - **Region**: Choose closest to your database (e.g. Frankfurt, Oregon, Singapore)
+   - **Branch**: `main`
+   - **Root Directory**: `Backend` (or leave empty if using root-relative paths)
+   - **Runtime**: `Docker`
+   - **Dockerfile Path**: `Backend/Dockerfile.render`
+   - **Docker Context**: `Backend`
+   - **Instance Type**: `Free`
+4. Add the **Environment Variables** (see table below).
+5. (Optional) If using a Secret File for Firebase:
+   - Click **Secret Files** > **Add Secret File**.
+   - Filename: `serviceAccountKey.json`
+   - Contents: Paste the JSON contents of your Firebase service account key.
+6. Click **Deploy Web Service**.
+
+---
+
+### Step 3: Required Environment Variables on Render
+
+| Variable | Value / Format | Description |
+|---|---|---|
+| `NODE_ENV` | `production` | Enables production optimizations |
+| `TRUST_PROXY` | `true` | Required for rate limiter to identify client IPs behind Render's proxy |
+| `Redis_URL` | `rediss://default:...@...upstash.io:6379` | Upstash Redis connection string |
+| `INTERNAL_SECRET` | 32-byte hex string | Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
+| `FRONTEND_URL` | `https://your-nexusmind-frontend.vercel.app` | Allowed CORS origin for your frontend |
+| `AUTH_MONGODB_URI` | `mongodb+srv://.../auth` | MongoDB URI for auth database |
+| `CHAT_MONGODB_URI` | `mongodb+srv://.../chat` | MongoDB URI for chat database |
+| `PAYMENT_MONGODB_URI` | `mongodb+srv://.../payment` | MongoDB URI for payment database |
+| `AGENT_MONGODB_URI` | `mongodb+srv://.../agent` | MongoDB URI for agent database |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | `{"type":"service_account",...}` | Paste full raw JSON string from `serviceAccountKey.json` |
+| `OPENROUTER_API_KEY` | `sk-or-v1-...` | OpenRouter API Key for AI Agents |
+| `GOOGLE_API_KEY` | `AIzaSy...` | Gemini Vision key for image analyzer |
+| `TAVILY_API_KEY` | `tvly-...` | Tavily Search key for Search Agent |
+| `CLOUDINARY_CLOUD_NAME` | `...` | Cloudinary cloud name |
+| `CLOUDINARY_API_KEY` | `...` | Cloudinary API Key |
+| `CLOUDINARY_API_SECRET` | `...` | Cloudinary API Secret |
+| `CLOUDFLARE_ACCOUNT_ID` | `...` | Cloudflare account for FLUX image gen |
+| `CLOUDFLARE_API_TOKEN` | `...` | Cloudflare Workers AI token |
+| `QDRANT_URL` | `https://...qdrant.io` | Qdrant Cloud URL for PDF vector store |
+| `QDRANT_API_KEY` | `...` | Qdrant Cloud API Key |
+| `RAZORPAY_KEY_ID` | `rzp_live_...` or `rzp_test_...` | Razorpay public key ID |
+| `RAZORPAY_KEY_SECRET` | `...` | Razorpay secret |
+| `RAZORPAY_WEBHOOK_SECRET` | `...` | Razorpay webhook secret |
+
+> [!NOTE]
+> If your MongoDB cluster uses a single URI for all collections, you can supply `MONGODB_URI` instead of individual per-service URIs. PM2 will automatically forward it to all services.
+
+---
+
+### Step 4: Post-Deployment Configuration
+
+1. **Test Backend Health**:
+   Open in your browser or run:
+   ```bash
+   curl https://<your-service>.onrender.com/health
+   # Response: {"status":"ok","service":"gateway","timestamp":"..."}
+   ```
+2. **Update Frontend API Base URL**:
+   In your Frontend deployment (e.g. Vercel, Netlify, or Render):
+   ```env
+   VITE_SERVER_URL=https://<your-service>.onrender.com
+   ```
+3. **Configure Razorpay Webhook**:
+   In the **Razorpay Dashboard** > **Settings** > **Webhooks**:
+   - Webhook URL: `https://<your-service>.onrender.com/payment/webhook`
+   - Secret: Must match `RAZORPAY_WEBHOOK_SECRET`
+   - Events: Select `payment.captured`, `order.paid`.
+

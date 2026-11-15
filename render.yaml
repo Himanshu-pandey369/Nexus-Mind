@@ -1,0 +1,57 @@
+services:
+  - type: web
+    name: nexusmind-backend
+    runtime: docker
+    dockerContext: Backend
+    dockerfilePath: Backend/Dockerfile.render
+    plan: free
+    region: oregon
+    branch: main
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY
+        value: "true"
+      - key: FRONTEND_URL
+        sync: false
+      - key: Redis_URL
+        sync: false
+      - key: INTERNAL_SECRET
+        generateValue: true
+      - key: AUTH_MONGODB_URI
+        sync: false
+      - key: CHAT_MONGODB_URI
+        sync: false
+      - key: PAYMENT_MONGODB_URI
+        sync: false
+      - key: AGENT_MONGODB_URI
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDFLARE_ACCOUNT_ID
+        sync: false
+      - key: CLOUDFLARE_API_TOKEN
+        sync: false
+      - key: QDRANT_URL
+        sync: false
+      - key: QDRANT_API_KEY
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
