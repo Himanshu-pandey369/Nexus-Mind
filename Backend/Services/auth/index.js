@@ -6,6 +6,7 @@ import creditRouter from "./routes/credit.route.js";
 import usageRouter from "./routes/usage.route.js";
 
 const app = express();
+app.set("trust proxy", 1);
 app.use(express.json());
 
 try {
@@ -32,7 +33,8 @@ app.use("/auth/usage", usageRouter);
 app.use("/usage", usageRouter);
 
 const PORT = process.env.PORT || 8001;
+const HOST = process.env.INTERNAL_HOST || "127.0.0.1";
 
-app.listen(PORT, () => {
-  console.log(`Auth & Credit service running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Auth & Credit service running on ${HOST}:${PORT}`);
 });

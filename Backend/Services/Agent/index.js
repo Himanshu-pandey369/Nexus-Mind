@@ -28,7 +28,8 @@ app.use("/agent/images", imageRoutes);
 app.use("/images", imageRoutes);
 
 const PORT = process.env.PORT || 8083;
+const HOST = process.env.INTERNAL_HOST || "127.0.0.1";
 
-app.listen(PORT, () => {
-  console.log(`Agent service started on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Agent service started on ${HOST}:${PORT}`);
 });

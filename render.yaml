@@ -15,7 +15,7 @@ services:
         value: "true"
       - key: FRONTEND_URL
         sync: false
-      - key: Redis_URL
+      - key: REDIS_URL
         sync: false
       - key: INTERNAL_SECRET
         generateValue: true

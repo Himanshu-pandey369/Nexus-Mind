@@ -17,6 +17,7 @@ COPY Services/Agent/package*.json ./Services/Agent/
 
 # Install dependencies for each module/service
 RUN npm install --omit=dev
+RUN npm install --prefix ./Shared --omit=dev
 RUN npm install --prefix ./Gateway --omit=dev
 RUN npm install --prefix ./Services/auth --omit=dev
 RUN npm install --prefix ./Services/Chat --omit=dev
@@ -33,20 +34,21 @@ ENV PORT=8000
 # Install PM2 globally to supervise all 5 microservices in one container
 RUN npm install -g pm2
 
-# Copy installed node_modules from deps stage
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/Gateway/node_modules ./Gateway/node_modules
-COPY --from=deps /app/Services/auth/node_modules ./Services/auth/node_modules
-COPY --from=deps /app/Services/Chat/node_modules ./Services/Chat/node_modules
-COPY --from=deps /app/Services/Payment/node_modules ./Services/Payment/node_modules
-COPY --from=deps /app/Services/Agent/node_modules ./Services/Agent/node_modules
-
 # Copy application sources
 COPY package*.json ./
 COPY Shared/ ./Shared/
 COPY Gateway/ ./Gateway/
 COPY Services/ ./Services/
 COPY pm2.process.config.cjs ./
+
+# Copy installed node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/Shared/node_modules ./Shared/node_modules
+COPY --from=deps /app/Gateway/node_modules ./Gateway/node_modules
+COPY --from=deps /app/Services/auth/node_modules ./Services/auth/node_modules
+COPY --from=deps /app/Services/Chat/node_modules ./Services/Chat/node_modules
+COPY --from=deps /app/Services/Payment/node_modules ./Services/Payment/node_modules
+COPY --from=deps /app/Services/Agent/node_modules ./Services/Agent/node_modules
 
 # Ensure node user owns the app directory
 RUN chown -R node:node /app

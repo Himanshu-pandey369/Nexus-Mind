@@ -2,6 +2,38 @@ import { getAuth } from "firebase-admin/auth";
 import { app } from "../config/firebase.js";
 import User from "../models/user.model.js";
 import redis from "../../../Shared/redis/redis.js";
+
+const isProduction = process.env.NODE_ENV === "production";
+const getSessionCookieOptions = (options = {}) => {
+  const base = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    path: "/",
+  };
+  if (process.env.COOKIE_DOMAIN) {
+    base.domain = process.env.COOKIE_DOMAIN;
+  }
+  return {
+    ...base,
+    ...options,
+  };
+};
+
+const extractSessionId = (req) => {
+  if (req.cookies?.session) {
+    return req.cookies.session;
+  }
+  const cookieHeader = req.headers?.cookie;
+  if (cookieHeader) {
+    const match = cookieHeader.match(/(?:^|;\s*)session=([^;]+)/);
+    if (match) {
+      return decodeURIComponent(match[1]);
+    }
+  }
+  return null;
+};
+
 export const googleAuth = async (req, res) => {
   try {
     const { idToken } = req.body;
@@ -35,13 +67,13 @@ export const googleAuth = async (req, res) => {
       credits:user.credits ?? 1000,
     }),"EX",5 * 24 * 60 * 60 * 1000)
     
-    res.cookie("session", sessionID, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 5 * 24 * 60 * 60 * 1000,
-      path: "/",
-    });
+    res.cookie(
+      "session",
+      sessionID,
+      getSessionCookieOptions({
+        maxAge: 5 * 24 * 60 * 60 * 1000,
+      })
+    );
 
     return res.status(200).json({
       success: true,
@@ -66,15 +98,10 @@ export const googleAuth = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    const sessionID = req.cookies?.session;
+    const sessionID = extractSessionId(req);
 
     if (!sessionID) {
-      res.clearCookie("session", {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
-        path: "/",
-      });
+      res.clearCookie("session", getSessionCookieOptions());
 
       return res.status(200).json({
         success: true,
@@ -89,12 +116,7 @@ export const logout = async (req, res) => {
       (await auth.verifySessionCookie(sessionID)).uid
     );
 
-    res.clearCookie("session", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie("session", getSessionCookieOptions());
 
     return res.status(200).json({
       success: true,
@@ -103,12 +125,7 @@ export const logout = async (req, res) => {
   } catch (error) {
     console.error("Logout error:", error.message);
 
-    res.clearCookie("session", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-    });
+    res.clearCookie("session", getSessionCookieOptions());
 
     return res.status(500).json({
       success: false,

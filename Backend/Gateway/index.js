@@ -53,10 +53,29 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.use(cors({
-  origin: process.env.FRONTEND_URL,
-  credentials: true,
-}));
+const configuredFrontend = process.env.FRONTEND_URL;
+const allowedOrigins = configuredFrontend
+  ? configuredFrontend
+      .split(",")
+      .map((url) => url.trim().replace(/\/+$/, ""))
+      .filter(Boolean)
+  : [];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.length === 0) {
+        return callback(null, true);
+      }
+      const normalizedOrigin = origin.replace(/\/+$/, "");
+      if (allowedOrigins.includes(normalizedOrigin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
+    credentials: true,
+  })
+);
 
 app.use(
   express.json({
@@ -187,7 +206,8 @@ app.use("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 8000;
+const HOST = "0.0.0.0";
 
-app.listen(PORT, () => {
-  console.log(`Gateway started on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Gateway started on ${HOST}:${PORT}`);
 });
