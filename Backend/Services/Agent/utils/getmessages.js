@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
+const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://127.0.0.1:8002";
 
 export const getmessages = async (conversationId) => {
   if (!conversationId || typeof conversationId !== "string" || conversationId.trim() === "") {

@@ -59,13 +59,18 @@ export const googleAuth = async (req, res) => {
       expiresIn: 5 * 24 * 60 * 60 * 1000,
     });
 
-    await redis.set(`session-${sessionID}`,JSON.stringify({
-      userID:user._id,
-      name:user.name,
-      email:user.email,
-      avatar:user.avatar,
-      credits:user.credits ?? 1000,
-    }),"EX",5 * 24 * 60 * 60 * 1000)
+    await redis.set(
+      `session-${sessionID}`,
+      JSON.stringify({
+        userID: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        credits: user.credits ?? 1000,
+      }),
+      "EX",
+      5 * 24 * 60 * 60 // 5 days in seconds
+    );
     
     res.cookie(
       "session",

@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const getAuthServiceUrl = () =>
-  process.env.AUTH_SERVICE_URL || "http://localhost:8001";
+  process.env.AUTH_SERVICE_URL || "http://127.0.0.1:8001";
 
 const getInternalHeaders = () => {
   const secret = process.env.INTERNAL_SECRET || "";

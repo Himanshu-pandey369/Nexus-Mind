@@ -24,7 +24,7 @@ app.get("/testing", (req, res) => {
 });
 
 const PORT = process.env.PORT || 8002;
-const HOST = process.env.INTERNAL_HOST || "127.0.0.1";
+const HOST = process.env.INTERNAL_HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`Chat service started on ${HOST}:${PORT}`);

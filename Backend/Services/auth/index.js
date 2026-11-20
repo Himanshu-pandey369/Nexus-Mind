@@ -33,7 +33,7 @@ app.use("/auth/usage", usageRouter);
 app.use("/usage", usageRouter);
 
 const PORT = process.env.PORT || 8001;
-const HOST = process.env.INTERNAL_HOST || "127.0.0.1";
+const HOST = process.env.INTERNAL_HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`Auth & Credit service running on ${HOST}:${PORT}`);

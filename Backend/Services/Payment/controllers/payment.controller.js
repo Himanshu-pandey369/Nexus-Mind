@@ -4,7 +4,7 @@ import { getPackageById, getAllPackages } from "../config/packages.js";
 import Payment from "../models/payment.model.js";
 import axios from "axios";
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://localhost:8001";
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || "http://127.0.0.1:8001";
 
 /**
  * Internal helper: call Auth Service to add credits.

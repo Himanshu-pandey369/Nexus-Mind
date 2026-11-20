@@ -14,17 +14,23 @@
 
 # Environment files with secrets (keep .env.example)
 **/.env
-**/.env.local
-**/.env.production
+**/.env.*
 !**/.env.example
 
 # Firebase service account key — never bundle into Docker images
 **/serviceAccountKey.json
 
-# Test and coverage
+# Docker and Compose manifests
+**/docker-compose*.yml
+Dockerfile*
+**/Dockerfile*
+
+# Test, coverage, and temporary scripts
 **/coverage/
 **/dist/
 **/.nyc_output/
+**/*test*.*
+*.log
 
 # IDE / Editor
 **/.vscode/

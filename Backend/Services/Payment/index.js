@@ -32,7 +32,7 @@ app.get("/health", (req, res) => {
 });
 
 const PORT = process.env.PORT || 8003;
-const HOST = process.env.INTERNAL_HOST || "127.0.0.1";
+const HOST = process.env.INTERNAL_HOST || "0.0.0.0";
 
 app.listen(PORT, HOST, () => {
   console.log(`Payment service running on ${HOST}:${PORT}`);
