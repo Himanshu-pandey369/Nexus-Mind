@@ -6,6 +6,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
+import { getInternalServiceHeaders } from "../Shared/middleware/serviceAuth.js";
 import { authMiddleware } from "./middleware/auth.middle.js";
 import { getCurrentUser } from "./controllers/user.controller.js";
 import {
@@ -20,17 +21,33 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
+const internalServiceHeaders = getInternalServiceHeaders();
 
-const normalizeServiceUrl = (url, fallback) => {
-  const target = (url || fallback || "").trim();
-  if (!target) return "";
-  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+const normalizeServiceUrl = (url, fallback, name) => {
+  const target = (url || "").trim();
+  if (!target && process.env.NODE_ENV === "production") {
+    throw new Error(`${name} must be configured in production`);
+  }
+  const resolved = target || fallback || "";
+  if (!resolved) return "";
+  const withProtocol = /^https?:\/\//i.test(resolved)
+    ? resolved
+    : `${process.env.NODE_ENV === "production" ? "https" : "http"}://${resolved}`;
+  return withProtocol.replace(/\/+$/, "");
 };
 
-const AUTH_SERVICE = normalizeServiceUrl(process.env.AUTH_SERVICE, "http://127.0.0.1:8001");
-const CHAT_SERVICE = normalizeServiceUrl(process.env.CHAT_SERVICE, "http://127.0.0.1:8002");
-const PAYMENT_SERVICE = normalizeServiceUrl(process.env.PAYMENT_SERVICE, "http://127.0.0.1:8003");
-const AGENT_SERVICE = normalizeServiceUrl(process.env.AGENT_SERVICE, "http://127.0.0.1:8083");
+const AUTH_SERVICE = normalizeServiceUrl(process.env.AUTH_SERVICE, "http://127.0.0.1:8001", "AUTH_SERVICE");
+const CHAT_SERVICE = normalizeServiceUrl(process.env.CHAT_SERVICE, "http://127.0.0.1:8002", "CHAT_SERVICE");
+const PAYMENT_SERVICE = normalizeServiceUrl(process.env.PAYMENT_SERVICE, "http://127.0.0.1:8003", "PAYMENT_SERVICE");
+const AGENT_SERVICE = normalizeServiceUrl(process.env.AGENT_SERVICE, "http://127.0.0.1:8083", "AGENT_SERVICE");
+
+const addInternalServiceAuth = (proxyReqOpts) => {
+  proxyReqOpts.headers = {
+    ...proxyReqOpts.headers,
+    ...internalServiceHeaders,
+  };
+  return proxyReqOpts;
+};
 
 // Configure trust proxy safely according to deployment topology
 // When running behind reverse proxy (e.g. Nginx, Cloudflare), set TRUST_PROXY=true or number of hops
@@ -111,6 +128,7 @@ app.use(
   authLimiter,
   proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/auth${req.url}`,
+    proxyReqOptDecorator: addInternalServiceAuth,
   })
 );
 
@@ -123,6 +141,7 @@ app.use(
   proxy(CHAT_SERVICE, {
     proxyReqPathResolver: (req) => `/chat${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
       return proxyReqOpts;
     },
@@ -137,6 +156,7 @@ app.use(
     limit: "15mb",
     proxyReqPathResolver: (req) => `/agent${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
       return proxyReqOpts;
     },
@@ -149,6 +169,7 @@ app.use(
   proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/credits${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
       return proxyReqOpts;
     },
@@ -161,6 +182,7 @@ app.use(
   proxy(AUTH_SERVICE, {
     proxyReqPathResolver: (req) => `/usage${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
       return proxyReqOpts;
     },
@@ -172,6 +194,7 @@ app.use(
   "/payment/packages",
   proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: () => `/payment/packages`,
+    proxyReqOptDecorator: addInternalServiceAuth,
   })
 );
 
@@ -181,6 +204,7 @@ app.use(
   proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: () => `/payment/webhook`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       if (srcReq.headers["x-razorpay-signature"]) {
         proxyReqOpts.headers["x-razorpay-signature"] =
           srcReq.headers["x-razorpay-signature"];
@@ -201,6 +225,7 @@ app.use(
   proxy(PAYMENT_SERVICE, {
     proxyReqPathResolver: (req) => `/payment${req.url}`,
     proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+      addInternalServiceAuth(proxyReqOpts);
       proxyReqOpts.headers["x-user-id"] = srcReq.user.userID;
       return proxyReqOpts;
     },

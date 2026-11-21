@@ -83,6 +83,7 @@ services:
       PORT: "8002"
       INTERNAL_HOST: "0.0.0.0"
       NODE_ENV: production
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-nexusmind_shared_secret_for_local_compose_test}
     networks:
       - nexusmind-network
     healthcheck:

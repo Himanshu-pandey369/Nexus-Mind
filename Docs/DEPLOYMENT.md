@@ -171,114 +171,76 @@ docker compose -f docker-compose.prod.yml ps
 
 ---
 
-## Deploying Backend to Render (All-in-One / Free-Tier Friendly)
+## Deploying the five services to Render
 
-NexusMind backend can be deployed to [Render](https://render.com) using a single Docker Web Service. This packages the API Gateway and all 4 microservices (`auth`, `chat`, `payment`, `agent`) into an orchestrated container managed by `pm2-runtime`.
+The root [`render.yaml`](../render.yaml) defines five independent Docker **Web Services**, each on the **Free** plan. Each service has its own public Render URL; Gateway remains the frontend entry point. The Blueprint references each service's `RENDER_EXTERNAL_URL` for public HTTPS REST calls and disables commit-triggered deploys (`autoDeployTrigger: "off"`).
 
-### Advantages
-- **$0 / Month**: Operates entirely within Render's free Web Service tier (750 free hours/month).
-- **Zero Networking Complexity**: Internal microservices communicate securely over `localhost:8001`, `localhost:8002`, `localhost:8003`, and `localhost:8083`. Only the Gateway is exposed to Render on `$PORT`.
-- **Automatic Process Supervision**: If any individual microservice encounters an error, PM2 restarts it immediately without restarting the entire container.
+### Before creating the Blueprint
 
----
+1. Prepare four MongoDB database URIs (`AUTH_MONGODB_URI`, `CHAT_MONGODB_URI`, `PAYMENT_MONGODB_URI`, `AGENT_MONGODB_URI`), an Upstash Redis TLS URL, Firebase Admin service-account JSON, and the provider credentials used by your enabled AI and payment features.
+2. In MongoDB Atlas, configure network access for Render's dynamic outbound addresses. Allowing `0.0.0.0/0` is broad; use strong database credentials, least-privilege database users, and TLS.
+3. Store the Firebase service-account JSON and every API/database credential only in Render's environment-variable dashboard. Do not add a credential file or production `.env` to Git.
 
-### Step 1: External Services Setup
+### Blueprint deployment (manual)
 
-#### 1. MongoDB Atlas Network Access
-Render services use dynamic outbound IP addresses:
-1. Go to **MongoDB Atlas** > **Network Access**.
-2. Click **Add IP Address** > select **Allow Access from Anywhere** (`0.0.0.0/0`).
-3. Confirm your database connection strings for `auth`, `chat`, `payment`, and `agent` (or use a single MongoDB cluster with different database names in the URI path).
+1. Push the reviewed project changes to the intended GitHub branch yourself; no deployment or push is performed by this project setup.
+2. In the Render Dashboard, choose **New → Blueprint**, connect the repository, and select its `main` branch (or change `branch` on each service in `render.yaml` to your chosen branch).
+3. Review the Blueprint: it must list exactly `nexusmind-gateway`, `nexusmind-auth`, `nexusmind-chat`, `nexusmind-payment`, and `nexusmind-agent`, all as **Web Services / Docker / Free**. It must not list private services or a combined backend service.
+4. Enter the prompted `sync: false` values in Render's dashboard. `nexusmind-auth` generates `INTERNAL_SECRET`; the other four services receive that secret by reference. Enter the public frontend origin for Gateway's `FRONTEND_URL`.
+5. Explicitly choose **Apply** when ready to create the services. The Blueprint has commit-triggered auto-deploys turned off; deploy later changes manually from each service's **Manual Deploy** menu.
+6. Wait for all five health checks to pass. In Render, copy each service's actual `onrender.com` URL and confirm Gateway's `AUTH_SERVICE`, `CHAT_SERVICE`, `PAYMENT_SERVICE`, and `AGENT_SERVICE`, plus Payment/Agent's upstream URL variables, resolve to those HTTPS hosts.
 
-#### 2. Redis Setup (Upstash Redis)
-Render charges for Redis, but [Upstash](https://upstash.com) provides a free serverless Redis database:
-1. Create a free database at **console.upstash.com**.
-2. Copy the **Node.js (ioredis)** connection string (`rediss://default:<password>@<host>:6379`).
+### Manual Web Service setup (without a Blueprint)
 
----
+Create five separate services via **New → Web Service**, each from the same repository and branch. Use **Docker** runtime, **Free** plan, region Oregon, and turn off automatic deploys. For every service, leave Root Directory empty and use Docker Context `Backend`; Dockerfile paths are relative to the repository root:
 
-### Step 2: Deploying to Render
+| Render service | Dockerfile path | Docker context | Health check |
+|---|---|---|---|
+| `nexusmind-gateway` | `Backend/Gateway/Dockerfile` | `Backend` | `/health` |
+| `nexusmind-auth` | `Backend/Services/auth/Dockerfile` | `Backend` | `/health` |
+| `nexusmind-chat` | `Backend/Services/Chat/Dockerfile` | `Backend` | `/health` |
+| `nexusmind-payment` | `Backend/Services/Payment/Dockerfile` | `Backend` | `/health` |
+| `nexusmind-agent` | `Backend/Services/Agent/Dockerfile` | `Backend` | `/health` |
 
-You can deploy using either Render Blueprints (automated) or the Render Web UI (manual).
+Create Auth first and set a random 32-byte `INTERNAL_SECRET`; add the exact same secret to Gateway, Chat, Payment, and Agent. Create the remaining services and configure their service URL variables with the corresponding public HTTPS Render URLs. Create Gateway last. The five Dockerfiles use their own `CMD ["node", "index.js"]`; Render supplies `PORT`.
 
-#### Method A: Blueprint Deployment (Fastest)
-1. Push your repository to GitHub (ensure `render.yaml`, `Backend/Dockerfile.render`, and `Backend/pm2.process.config.cjs` are committed).
-2. Go to the [Render Dashboard](https://dashboard.render.com).
-3. Click **New +** > **Blueprint**.
-4. Connect your `NexusMind` repository.
-5. Render will automatically detect `render.yaml` and prompt you to input the environment variables.
-6. Click **Apply**.
+### Environment variable checklist
 
-#### Method B: Manual Web Service Deployment
-1. Go to the [Render Dashboard](https://dashboard.render.com) > **New +** > **Web Service**.
-2. Connect your GitHub repository.
-3. Configure the service settings:
-   - **Name**: `nexusmind-backend`
-   - **Region**: Choose closest to your database (e.g. Frankfurt, Oregon, Singapore)
-   - **Branch**: `main`
-   - **Root Directory**: `Backend` (or leave empty if using root-relative paths)
-   - **Runtime**: `Docker`
-   - **Dockerfile Path**: `Backend/Dockerfile.render`
-   - **Docker Context**: `Backend`
-   - **Instance Type**: `Free`
-4. Add the **Environment Variables** (see table below).
-5. (Optional) If using a Secret File for Firebase:
-   - Click **Secret Files** > **Add Secret File**.
-   - Filename: `serviceAccountKey.json`
-   - Contents: Paste the JSON contents of your Firebase service account key.
-6. Click **Deploy Web Service**.
+**Gateway**
+- Blueprint-provided: `NODE_ENV`, `TRUST_PROXY`, `AUTH_SERVICE`, `CHAT_SERVICE`, `PAYMENT_SERVICE`, `AGENT_SERVICE`, and shared `INTERNAL_SECRET`.
+- Enter in Render: `FRONTEND_URL` (one or more comma-separated HTTPS origins) and `REDIS_URL` (`rediss://...`).
 
----
+**Auth**
+- Enter in Render: `AUTH_MONGODB_URI`, `REDIS_URL`, and `FIREBASE_SERVICE_ACCOUNT_JSON`.
+- `INTERNAL_SECRET` is generated by the Blueprint. For manual setup, generate one strong random value and share it with all five services.
 
-### Step 3: Required Environment Variables on Render
+**Chat**
+- Enter in Render: `CHAT_MONGODB_URI`.
+- `INTERNAL_SECRET` is shared from Auth.
 
-| Variable | Value / Format | Description |
-|---|---|---|
-| `NODE_ENV` | `production` | Enables production optimizations |
-| `TRUST_PROXY` | `true` | Required for rate limiter to identify client IPs behind Render's proxy |
-| `Redis_URL` | `rediss://default:...@...upstash.io:6379` | Upstash Redis connection string |
-| `INTERNAL_SECRET` | 32-byte hex string | Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"` |
-| `FRONTEND_URL` | `https://your-nexusmind-frontend.vercel.app` | Allowed CORS origin for your frontend |
-| `AUTH_MONGODB_URI` | `mongodb+srv://.../auth` | MongoDB URI for auth database |
-| `CHAT_MONGODB_URI` | `mongodb+srv://.../chat` | MongoDB URI for chat database |
-| `PAYMENT_MONGODB_URI` | `mongodb+srv://.../payment` | MongoDB URI for payment database |
-| `AGENT_MONGODB_URI` | `mongodb+srv://.../agent` | MongoDB URI for agent database |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | `{"type":"service_account",...}` | Paste full raw JSON string from `serviceAccountKey.json` |
-| `OPENROUTER_API_KEY` | `sk-or-v1-...` | OpenRouter API Key for AI Agents |
-| `GOOGLE_API_KEY` | `AIzaSy...` | Gemini Vision key for image analyzer |
-| `TAVILY_API_KEY` | `tvly-...` | Tavily Search key for Search Agent |
-| `CLOUDINARY_CLOUD_NAME` | `...` | Cloudinary cloud name |
-| `CLOUDINARY_API_KEY` | `...` | Cloudinary API Key |
-| `CLOUDINARY_API_SECRET` | `...` | Cloudinary API Secret |
-| `CLOUDFLARE_ACCOUNT_ID` | `...` | Cloudflare account for FLUX image gen |
-| `CLOUDFLARE_API_TOKEN` | `...` | Cloudflare Workers AI token |
-| `QDRANT_URL` | `https://...qdrant.io` | Qdrant Cloud URL for PDF vector store |
-| `QDRANT_API_KEY` | `...` | Qdrant Cloud API Key |
-| `RAZORPAY_KEY_ID` | `rzp_live_...` or `rzp_test_...` | Razorpay public key ID |
-| `RAZORPAY_KEY_SECRET` | `...` | Razorpay secret |
-| `RAZORPAY_WEBHOOK_SECRET` | `...` | Razorpay webhook secret |
+**Payment**
+- Enter in Render: `PAYMENT_MONGODB_URI`, `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET`.
+- `AUTH_SERVICE_URL` is sourced from Auth's public `RENDER_EXTERNAL_URL`; `INTERNAL_SECRET` is shared from Auth.
 
-> [!NOTE]
-> If your MongoDB cluster uses a single URI for all collections, you can supply `MONGODB_URI` instead of individual per-service URIs. PM2 will automatically forward it to all services.
+**Agent**
+- Enter in Render: `AGENT_MONGODB_URI`, `REDIS_URL`, `OPENROUTER_API_KEY`, `GOOGLE_API_KEY`, `TAVILY_API_KEY`, `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `QDRANT_URL`, and `QDRANT_API_KEY`.
+- `AUTH_SERVICE_URL` and `CHAT_SERVICE_URL` are sourced from the public Auth and Chat `RENDER_EXTERNAL_URL` values; `INTERNAL_SECRET` is shared from Auth. `QDRANT_COLLECTION` defaults to `nexusmind_pdf_rag`.
 
----
+**Frontend (deployed separately)**
+- Set `VITE_SERVER_URL` to the Gateway's `https://<gateway>.onrender.com` URL and `VITE_FIREBASE_API` to the Firebase web API key. The Firebase web API key and Razorpay key ID are public client configuration, not substitutes for backend secrets. Never put MongoDB, Redis, Firebase Admin, AI-provider, Cloudinary, Cloudflare, or Razorpay secret keys in `VITE_*` variables.
 
-### Step 4: Post-Deployment Configuration
+### Verify and connect integrations
 
-1. **Test Backend Health**:
-   Open in your browser or run:
-   ```bash
-   curl https://<your-service>.onrender.com/health
-   # Response: {"status":"ok","service":"gateway","timestamp":"..."}
-   ```
-2. **Update Frontend API Base URL**:
-   In your Frontend deployment (e.g. Vercel, Netlify, or Render):
-   ```env
-   VITE_SERVER_URL=https://<your-service>.onrender.com
-   ```
-3. **Configure Razorpay Webhook**:
-   In the **Razorpay Dashboard** > **Settings** > **Webhooks**:
-   - Webhook URL: `https://<your-service>.onrender.com/payment/webhook`
-   - Secret: Must match `RAZORPAY_WEBHOOK_SECRET`
-   - Events: Select `payment.captured`, `order.paid`.
+After deployment, call `https://<service>.onrender.com/health` for each service. Only Gateway should be used by the browser; direct requests to downstream application routes require the shared service secret and should return `403` without it. Keep service authentication enabled regardless of CORS settings.
 
+Set the Razorpay webhook URL to `https://<gateway>.onrender.com/payment/webhook` and use the same secret as `RAZORPAY_WEBHOOK_SECRET`. Test login, chat, agent credit reservation/commit, payment fulfillment, and a real webhook in Razorpay test mode.
+
+### Render Free limitations
+
+- Each free web service is limited to 0.1 CPU and 512 MB RAM. The AI Agent's memory/model workload may exceed this and be restarted or fail.
+- A free service spins down after 15 minutes without inbound traffic and can take about a minute to wake. Calls across independently sleeping services can add substantial latency or time out.
+- The workspace receives 750 free instance-hours per calendar month total. Five continuously active services need about 3,650 hours/month, so all five cannot stay continuously awake within that allowance; once it is exhausted, free services are suspended for the rest of the month.
+- Free services have ephemeral filesystems, no persistent disk, no SSH/shell access, and no horizontal scaling. Keep durable user data in MongoDB/Cloudinary/Qdrant/Redis providers, not container files.
+- Render Free is explicitly intended for testing/hobby use, not production applications. This configuration prepares the architecture for a manual trial deployment, but the Free tier is not a reliable production target.
+
+References: [Render Free services](https://render.com/docs/free), [Blueprint specification](https://render.com/docs/blueprint-spec).

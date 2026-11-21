@@ -4,8 +4,10 @@ import "dotenv/config";
 import authRouter from "./routes/auth.route.js";
 import creditRouter from "./routes/credit.route.js";
 import usageRouter from "./routes/usage.route.js";
+import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+const internalServiceAuth = createInternalServiceAuth();
 app.set("trust proxy", 1);
 app.use(express.json());
 
@@ -20,6 +22,8 @@ try {
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "auth" });
 });
+
+app.use(internalServiceAuth);
 
 // Authentication routes
 app.use("/auth", authRouter);

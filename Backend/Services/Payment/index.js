@@ -8,8 +8,10 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 import connectDb from "./config/db.js";
 import paymentRouter from "./routes/payment.route.js";
+import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+const internalServiceAuth = createInternalServiceAuth();
 app.use(
   express.json({
     verify: (req, res, buf) => {
@@ -25,11 +27,12 @@ try {
   process.exit(1);
 }
 
-app.use("/payment", paymentRouter);
-
 app.get("/health", (req, res) => {
   res.status(200).json({ success: true, service: "payment", status: "healthy" });
 });
+
+app.use(internalServiceAuth);
+app.use("/payment", paymentRouter);
 
 const PORT = process.env.PORT || 8003;
 const HOST = process.env.INTERNAL_HOST || "0.0.0.0";

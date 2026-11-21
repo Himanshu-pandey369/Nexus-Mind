@@ -2,8 +2,10 @@ import express from "express";
 import connectDb from "./config/db.js";
 import "dotenv/config";
 import chatRouter from "./routes/chat.route.js";
+import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+const internalServiceAuth = createInternalServiceAuth();
 app.use(express.json());
 
 try {
@@ -13,12 +15,12 @@ try {
   process.exit(1);
 }
 
-app.use("/chat", chatRouter);
-
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "chat" });
 });
 
+app.use(internalServiceAuth);
+app.use("/chat", chatRouter);
 app.get("/testing", (req, res) => {
   res.json("hello from chat");
 });

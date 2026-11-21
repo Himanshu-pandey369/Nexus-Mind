@@ -3,8 +3,10 @@ import "dotenv/config";
 import connectDb from "./config/db.js";
 import agentRouter from "./routes/agent.route.js";
 import imageRoutes from "./routes/imageRoutes.js";
+import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+const internalServiceAuth = createInternalServiceAuth();
 app.use(express.json());
 
 // Initialize MongoDB connection
@@ -14,14 +16,14 @@ try {
   console.error("MongoDB connection initialization failed:", error.message);
 }
 
-app.get("/", (req, res) => {
-  res.json({ message: "Hello from agent" });
-});
-
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", service: "agent" });
 });
 
+app.use(internalServiceAuth);
+app.get("/", (req, res) => {
+  res.json({ message: "Hello from agent" });
+});
 app.use("/agent", agentRouter);
 // Mount image routes under /agent/images (for Gateway proxy) and /images (for direct service calls)
 app.use("/agent/images", imageRoutes);

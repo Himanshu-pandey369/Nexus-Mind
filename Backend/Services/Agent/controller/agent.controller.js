@@ -11,10 +11,18 @@ import {
   refundCredits as refundCreditsClient,
   recordUsage,
 } from "../utils/creditClient.js";
+import { getInternalServiceHeaders } from "../../../Shared/middleware/serviceAuth.js";
 
 const normalizeUrl = (url, fallback) => {
-  const target = (url || fallback || "").trim();
-  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+  const target = (url || "").trim();
+  if (!target && process.env.NODE_ENV === "production") {
+    throw new Error("CHAT_SERVICE_URL must be configured in production");
+  }
+  const resolved = target || fallback || "";
+  const withProtocol = /^https?:\/\//i.test(resolved)
+    ? resolved
+    : `${process.env.NODE_ENV === "production" ? "https" : "http"}://${resolved}`;
+  return withProtocol.replace(/\/+$/, "");
 };
 
 const CHAT_SERVICE_URL = normalizeUrl(process.env.CHAT_SERVICE_URL, "http://localhost:8002");
@@ -247,11 +255,13 @@ export const agentChat = async (req, res) => {
         role: "user",
         content: cleanPrompt,
         ...(userImages.length > 0 ? { images: userImages } : {}),
-      }
+      },
+      { headers: getInternalServiceHeaders() }
     );
     await axios.post(
       `${CHAT_SERVICE_URL}/chat/conversations/${cleanConvId}/messages`,
-      { role: "assistant", content: aiResponse, images, artifacts }
+      { role: "assistant", content: aiResponse, images, artifacts },
+      { headers: getInternalServiceHeaders() }
     );
   } catch (err) {
     const msg = err.response?.data?.message || err.message;

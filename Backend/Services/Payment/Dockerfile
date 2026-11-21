@@ -24,6 +24,7 @@ COPY --from=deps /app/Services/Payment/node_modules ./Services/Payment/node_modu
 
 # Copy Payment application source
 COPY Services/Payment/ ./Services/Payment/
+COPY Shared/ ./Shared/
 
 # Run as non-root user for container security
 RUN chown -R node:node /app

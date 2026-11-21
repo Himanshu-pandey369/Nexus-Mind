@@ -24,6 +24,7 @@ COPY --from=deps /app/Services/Chat/node_modules ./Services/Chat/node_modules
 
 # Copy Chat application source
 COPY Services/Chat/ ./Services/Chat/
+COPY Shared/ ./Shared/
 
 # Run as non-root user for container security
 RUN chown -R node:node /app

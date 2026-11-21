@@ -1,21 +1,25 @@
 import axios from "axios";
+import { getInternalServiceHeaders } from "../../../Shared/middleware/serviceAuth.js";
 
 const normalizeUrl = (url, fallback) => {
-  const target = (url || fallback || "").trim();
-  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+  const target = (url || "").trim();
+  if (!target && process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SERVICE_URL must be configured in production");
+  }
+  const resolved = target || fallback || "";
+  const withProtocol = /^https?:\/\//i.test(resolved)
+    ? resolved
+    : `${process.env.NODE_ENV === "production" ? "https" : "http"}://${resolved}`;
+  return withProtocol.replace(/\/+$/, "");
 };
 
 const getAuthServiceUrl = () =>
   normalizeUrl(process.env.AUTH_SERVICE_URL, "http://127.0.0.1:8001");
 
-const getInternalHeaders = () => {
-  const secret = process.env.INTERNAL_SECRET || "";
-  const headers = { "Content-Type": "application/json" };
-  if (secret) {
-    headers["x-internal-secret"] = secret;
-  }
-  return headers;
-};
+const getInternalHeaders = () => ({
+  "Content-Type": "application/json",
+  ...getInternalServiceHeaders(),
+});
 
 /**
  * Reserve credits before executing an agent.

@@ -1,106 +1,96 @@
-# NexusMind — Environment Variables Reference
+# NexusMind Environment Variables
 
-> **Never commit real credentials to version control.** All `.env` files are gitignored.
+Never commit real credentials. `.env` files and the Firebase service-account file are ignored by Git and excluded from Docker build contexts. Set production values in Render's environment-variable dashboard, not in frontend build variables.
 
-## Gateway (`Backend/Gateway/.env`)
+## Gateway (`Backend/Gateway`)
 
-| Variable | Required | Example | Description |
-|---|---|---|---|
-| PORT | Yes | `8000` | Gateway listen port |
-| NODE_ENV | Yes | `production` | Environment mode |
-| AUTH_SERVICE | Yes | `http://auth-service:8001` | Auth service internal URL |
-| CHAT_SERVICE | Yes | `http://chat-service:8002` | Chat service internal URL |
-| PAYMENT_SERVICE | Yes | `http://payment-service:8003` | Payment service internal URL |
-| AGENT_SERVICE | Yes | `http://agent-service:8083` | Agent service internal URL |
-| FRONTEND_URL | Yes | `https://your-domain.com` | Frontend origin for CORS |
-| Redis_URL | Yes | `redis://redis:6379` | Redis connection (Docker) or `redis://localhost:6379` (local) |
-| TRUST_PROXY | No | `true` | Set `true` when behind Nginx/Caddy |
-| RATE_LIMIT_GENERAL_WINDOW_MS | No | `900000` | General rate limit window (ms) |
-| RATE_LIMIT_GENERAL_MAX | No | `300` | Max requests per window (general) |
-| RATE_LIMIT_AUTH_WINDOW_MS | No | `900000` | Auth rate limit window (ms) |
-| RATE_LIMIT_AUTH_MAX | No | `30` | Max auth requests per window |
-| RATE_LIMIT_AI_WINDOW_MS | No | `60000` | AI rate limit window (ms) |
-| RATE_LIMIT_AI_MAX | No | `30` | Max AI requests per window |
-| RATE_LIMIT_UPLOAD_WINDOW_MS | No | `60000` | Upload rate limit window (ms) |
-| RATE_LIMIT_UPLOAD_MAX | No | `10` | Max uploads per window |
-| RATE_LIMIT_PAYMENT_WINDOW_MS | No | `900000` | Payment rate limit window (ms) |
-| RATE_LIMIT_PAYMENT_MAX | No | `30` | Max payment requests per window |
+| Variable | Required | Notes |
+|---|---|---|
+| `PORT` | Platform-provided | Render supplies this; local default is `8000`. |
+| `NODE_ENV` | Yes | Set to `production` on Render. |
+| `AUTH_SERVICE` | Yes | Auth's public Render URL; Render Blueprint supplies `RENDER_EXTERNAL_URL`. |
+| `CHAT_SERVICE` | Yes | Chat's public Render URL. |
+| `PAYMENT_SERVICE` | Yes | Payment's public Render URL. |
+| `AGENT_SERVICE` | Yes | Agent's public Render URL. |
+| `INTERNAL_SECRET` | Yes in production | Same high-entropy secret in all five services; Render generates it on Auth and references it from the other services. |
+| `FRONTEND_URL` | Yes for browser deployment | Comma-separated allowed browser origin(s); CORS is not API authorization. |
+| `REDIS_URL` | Yes | Redis URL for sessions and rate limits; use `rediss://` with hosted TLS Redis. |
+| `TRUST_PROXY` | Recommended | `true` behind Render's proxy. |
+| `RATE_LIMIT_*` | No | Optional rate-limit tuning; see `Backend/Gateway/middleware/rateLimiter.js`. |
 
-## Auth Service (`Backend/Services/auth/.env`)
+## Auth (`Backend/Services/auth`)
 
-| Variable | Required | Example | Description |
-|---|---|---|---|
-| PORT | Yes | `8001` | Auth service listen port |
-| NODE_ENV | Yes | `development` | Environment mode |
-| MONGODB_URI | Yes | `mongodb+srv://user:pass@cluster.mongodb.net/auth` | MongoDB Atlas URI for auth database |
-| INTERNAL_SECRET | Yes | `<32-byte hex>` | Shared secret for internal service calls. Must match in auth, payment, agent. Generate: `openssl rand -hex 32` |
-| Redis_URL | Yes | `redis://redis:6379` | Redis connection |
-| FRONTEND_URL | Yes | `http://localhost:5173` | Frontend URL for CORS |
+| Variable | Required | Notes |
+|---|---|---|
+| `PORT` | Platform-provided | Render supplies this; local default is `8001`. |
+| `NODE_ENV` | Yes | Set to `production` on Render. |
+| `AUTH_MONGODB_URI` | Yes | Auth database URI. |
+| `REDIS_URL` | Yes | Session store; use hosted TLS Redis. |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Yes in production | Full Firebase Admin service-account JSON; store only as a Render secret. |
+| `INTERNAL_SECRET` | Yes in production | Shared service-auth secret. |
 
-**Note**: Firebase service account (`serviceAccountKey.json`) must be present in `Services/auth/` directory.
+## Chat (`Backend/Services/Chat`)
 
-## Chat Service (`Backend/Services/Chat/.env`)
+| Variable | Required | Notes |
+|---|---|---|
+| `PORT` | Platform-provided | Render supplies this; local default is `8002`. |
+| `NODE_ENV` | Yes | Set to `production` on Render. |
+| `CHAT_MONGODB_URI` | Yes | Chat database URI. |
+| `INTERNAL_SECRET` | Yes in production | Shared service-auth secret. |
 
-| Variable | Required | Example | Description |
-|---|---|---|---|
-| PORT | Yes | `8002` | Chat service listen port |
-| NODE_ENV | No | `development` | Environment mode |
-| MONGODB_URI | Yes | `mongodb+srv://user:pass@cluster.mongodb.net/chat` | MongoDB Atlas URI for chat database |
+## Payment (`Backend/Services/Payment`)
 
-## Payment Service (`Backend/Services/Payment/.env`)
+| Variable | Required | Notes |
+|---|---|---|
+| `PORT` | Platform-provided | Render supplies this; local default is `8003`. |
+| `NODE_ENV` | Yes | Set to `production` on Render. |
+| `PAYMENT_MONGODB_URI` | Yes | Payment database URI. |
+| `AUTH_SERVICE_URL` | Yes | Auth's public Render URL; HTTPS is used in production. |
+| `INTERNAL_SECRET` | Yes in production | Shared service-auth secret for calling Auth and accepting Gateway requests. |
+| `RAZORPAY_KEY_ID` | Yes | Public key ID; safe for the backend to return to the client. |
+| `RAZORPAY_KEY_SECRET` | Yes | Private Razorpay API secret; backend only. |
+| `RAZORPAY_WEBHOOK_SECRET` | Yes | Webhook signature secret; backend only. |
 
-| Variable | Required | Example | Description |
-|---|---|---|---|
-| PORT | Yes | `8003` | Payment service listen port |
-| NODE_ENV | No | `development` | Environment mode |
-| MONGODB_URI | Yes | `mongodb+srv://user:pass@cluster.mongodb.net/payment` | MongoDB Atlas URI for payment database |
-| AUTH_SERVICE_URL | Yes | `http://auth-service:8001` | Auth service URL for credit fulfillment |
-| INTERNAL_SECRET | Yes | `<32-byte hex>` | Must match auth service |
-| RAZORPAY_KEY_ID | Yes | `rzp_test_...` | Razorpay API key ID |
-| RAZORPAY_KEY_SECRET | Yes | `...` | Razorpay API key secret |
-| RAZORPAY_WEBHOOK_SECRET | Yes | `...` | Razorpay webhook HMAC secret (from Razorpay dashboard) |
+## Agent (`Backend/Services/Agent`)
 
-## Agent Service (`Backend/Services/Agent/.env`)
+| Variable | Required | Notes |
+|---|---|---|
+| `PORT` | Platform-provided | Render supplies this; local default is `8083`. |
+| `NODE_ENV` | Yes | Set to `production` on Render. |
+| `AGENT_MONGODB_URI` | Optional | Agent image persistence database. |
+| `AUTH_SERVICE_URL` | Yes | Auth's public Render URL; HTTPS is used in production. |
+| `CHAT_SERVICE_URL` | Yes | Chat's public Render URL; HTTPS is used in production. |
+| `INTERNAL_SECRET` | Yes in production | Shared service-auth secret. |
+| `REDIS_URL` | Yes | Hosted TLS Redis for agent memory. |
+| `OPENROUTER_API_KEY` | Yes for OpenRouter agents | Private provider key; backend only. |
+| `GOOGLE_API_KEY` | Yes for image analysis | Private provider key; backend only. |
+| `TAVILY_API_KEY` | Yes for Search agent | Private provider key; backend only. |
+| `CLOUDINARY_CLOUD_NAME` | Yes for asset upload | Cloudinary account setting. |
+| `CLOUDINARY_API_KEY` | Yes for asset upload | Cloudinary API key. |
+| `CLOUDINARY_API_SECRET` | Yes for asset upload | Private Cloudinary secret; backend only. |
+| `CLOUDFLARE_ACCOUNT_ID` | Yes for image generation | Cloudflare account setting. |
+| `CLOUDFLARE_API_TOKEN` | Yes for image generation | Private Cloudflare token; backend only. |
+| `QDRANT_URL` | Yes for PDF RAG | Qdrant cluster URL. |
+| `QDRANT_API_KEY` | Yes for PDF RAG | Private Qdrant credential; backend only. |
+| `QDRANT_COLLECTION` | No | Defaults to `nexusmind_pdf_rag`. |
+| `GEMINI_MODEL`, `CLOUDINARY_*_FOLDER` | No | Optional model and storage-folder settings. |
 
-| Variable | Required | Example | Description |
-|---|---|---|---|
-| PORT | Yes | `8083` | Agent service listen port |
-| MONGODB_URI | Yes | `mongodb+srv://user:pass@cluster.mongodb.net/agent` | MongoDB Atlas URI for agent database |
-| GROQ_API_KEY | No* | `gsk_...` | Groq API key (not currently used as primary — OpenRouter is primary) |
-| OPENROUTER_API_KEY | Yes | `sk-or-v1-...` | OpenRouter API key — primary LLM for chat, search, pdf, ppt agents |
-| GOOGLE_API_KEY | Yes | `...` | Google Gemini API key — used for imageAnalyzer agent |
-| TAVILY_API_KEY | Yes | `tvly-...` | Tavily Search API key — used by search agent |
-| CHAT_SERVICE_URL | Yes | `http://chat-service:8002` | Chat service URL for conversation history |
-| AUTH_SERVICE_URL | Yes | `http://auth-service:8001` | Auth service URL for credit management |
-| INTERNAL_SECRET | Yes | `<32-byte hex>` | Must match auth service |
-| Redis_URL | Yes | `redis://redis:6379` | Redis connection for conversation memory |
-| CLOUDINARY_CLOUD_NAME | Yes | `your-cloud-name` | Cloudinary cloud name |
-| CLOUDINARY_API_KEY | Yes | `...` | Cloudinary API key |
-| CLOUDINARY_API_SECRET | Yes | `...` | Cloudinary API secret |
-| CLOUDINARY_GENERATED_FOLDER | No | `nexusmind/generated-images` | Cloudinary folder for AI-generated images |
-| CLOUDINARY_PDFS_FOLDER | No | `nexusmind/generated-pdfs` | Cloudinary folder for generated PDFs |
-| CLOUDINARY_PPTS_FOLDER | No | `nexusmind/generated-presentations` | Cloudinary folder for generated PPTs |
-| CLOUDFLARE_ACCOUNT_ID | Yes | `...` | Cloudflare account ID for FLUX image generation |
-| CLOUDFLARE_API_TOKEN | Yes | `...` | Cloudflare API token for Workers AI |
-| QDRANT_URL | Yes | `https://...qdrant.io` | Qdrant Cloud URL for PDF RAG vector store |
-| QDRANT_API_KEY | Yes | `...` | Qdrant Cloud API key |
-| QDRANT_COLLECTION | No | `nexusmind_pdf_rag` | Qdrant collection name for PDF embeddings |
-| GEMINI_MODEL | No | `gemini-3.1-flash-lite` | Gemini model for image analysis |
+## Frontend (deployed separately)
 
-## Shared Internal Secret
-
-The `INTERNAL_SECRET` must be **identical** across all three services that use it:
-- `Services/auth/.env`
-- `Services/Payment/.env`
-- `Services/Agent/.env`
-
-Generate a secure secret: `openssl rand -hex 32`
-
-## Notes on Service URL Configuration
-
-| Deployment Mode | URL Format |
+| Variable | Notes |
 |---|---|
-| Local development (bare Node.js) | `http://localhost:<port>` |
-| Docker Compose | `http://<service-name>:<port>` |
+| `VITE_SERVER_URL` | Public Gateway URL. |
+| `VITE_FIREBASE_API` | Firebase Web API key. This is public client configuration, not a Firebase Admin credential. |
+| `VITE_RAZORPAY_KEY_ID` | Optional public Razorpay key ID fallback. |
 
-Docker Compose overrides `.env` file values for service URLs — do not change service URLs in `.env` files for Docker deployment. The `docker-compose.prod.yml` injects the correct Docker-internal URLs via its `environment:` section.
+Never set database URLs, `INTERNAL_SECRET`, Firebase Admin JSON, Redis credentials, or provider private keys as `VITE_*` variables.
+
+## Service authentication and URLs
+
+In production, every downstream service requires `x-internal-secret` for all application routes; only `/health` is unauthenticated for Render health checks. Gateway adds this header after authenticating the user's session, and Agent/Payment add it to their REST calls. Use one high-entropy secret only as a server-side environment variable. Do not treat CORS as authentication.
+
+| Environment | Service URL format |
+|---|---|
+| Local development | `http://localhost:<port>` |
+| Docker Compose | `http://<compose-service-name>:<port>` |
+| Render Free Web Services | Public URL from `RENDER_EXTERNAL_URL`, e.g. `https://<service>.onrender.com` |

@@ -1,75 +1,62 @@
 services:
-  # ==============================================================================
-  # SERVICE 1: API GATEWAY (Public Web Service)
-  # Acts as the single entrypoint for all frontend traffic. Verifies Firebase
-  # sessions via Redis, enforces rate limits, and proxies to private services.
-  # ==============================================================================
   - type: web
     name: nexusmind-gateway
     runtime: docker
-    dockerContext: Backend
-    dockerfilePath: Backend/Gateway/Dockerfile
     plan: free
+    autoDeployTrigger: "off"
     region: oregon
     branch: main
+    dockerContext: Backend
+    dockerfilePath: Backend/Gateway/Dockerfile
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8000"
       - key: TRUST_PROXY
         value: "true"
       - key: FRONTEND_URL
         sync: false
       - key: REDIS_URL
         sync: false
-      - key: AUTH_SERVICE
-        fromService:
-          type: pserv
-          name: nexusmind-auth
-          property: hostport
-      - key: CHAT_SERVICE
-        fromService:
-          type: pserv
-          name: nexusmind-chat
-          property: hostport
-      - key: PAYMENT_SERVICE
-        fromService:
-          type: pserv
-          name: nexusmind-payment
-          property: hostport
-      - key: AGENT_SERVICE
-        fromService:
-          type: pserv
-          name: nexusmind-agent
-          property: hostport
       - key: INTERNAL_SECRET
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-auth
           envVarKey: INTERNAL_SECRET
+      - key: AUTH_SERVICE
+        fromService:
+          type: web
+          name: nexusmind-auth
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: CHAT_SERVICE
+        fromService:
+          type: web
+          name: nexusmind-chat
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: PAYMENT_SERVICE
+        fromService:
+          type: web
+          name: nexusmind-payment
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: AGENT_SERVICE
+        fromService:
+          type: web
+          name: nexusmind-agent
+          envVarKey: RENDER_EXTERNAL_URL
 
-  # ==============================================================================
-  # SERVICE 2: AUTH & CREDITS SERVICE (Private Service)
-  # Manages user profiles, Firebase authentication validation, user credits balance,
-  # and credit reservations/commitments. Accessible only within private network.
-  # ==============================================================================
-  - type: pserv
+  - type: web
     name: nexusmind-auth
     runtime: docker
-    dockerContext: Backend
-    dockerfilePath: Backend/Services/auth/Dockerfile
-    plan: starter
+    plan: free
+    autoDeployTrigger: "off"
     region: oregon
     branch: main
+    dockerContext: Backend
+    dockerfilePath: Backend/Services/auth/Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8001"
-      - key: INTERNAL_HOST
-        value: "0.0.0.0"
       - key: AUTH_MONGODB_URI
         sync: false
       - key: REDIS_URL
@@ -78,63 +65,51 @@ services:
         sync: false
       - key: INTERNAL_SECRET
         generateValue: true
-      - key: FRONTEND_URL
-        sync: false
 
-  # ==============================================================================
-  # SERVICE 3: CHAT SERVICE (Private Service)
-  # Manages conversations, message persistence, and history retrieval.
-  # Accessible only within private network.
-  # ==============================================================================
-  - type: pserv
+  - type: web
     name: nexusmind-chat
     runtime: docker
+    plan: free
+    autoDeployTrigger: "off"
+    region: oregon
+    branch: main
     dockerContext: Backend
     dockerfilePath: Backend/Services/Chat/Dockerfile
-    plan: starter
-    region: oregon
-    branch: main
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8002"
-      - key: INTERNAL_HOST
-        value: "0.0.0.0"
       - key: CHAT_MONGODB_URI
         sync: false
+      - key: INTERNAL_SECRET
+        fromService:
+          type: web
+          name: nexusmind-auth
+          envVarKey: INTERNAL_SECRET
 
-  # ==============================================================================
-  # SERVICE 4: PAYMENT SERVICE (Private Service)
-  # Handles Razorpay orders, payment verification, and credit fulfillment.
-  # Calls Auth Service to add credits upon verified payment.
-  # Accessible only within private network (webhook proxied through Gateway).
-  # ==============================================================================
-  - type: pserv
+  - type: web
     name: nexusmind-payment
     runtime: docker
-    dockerContext: Backend
-    dockerfilePath: Backend/Services/Payment/Dockerfile
-    plan: starter
+    plan: free
+    autoDeployTrigger: "off"
     region: oregon
     branch: main
+    dockerContext: Backend
+    dockerfilePath: Backend/Services/Payment/Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8003"
-      - key: INTERNAL_HOST
-        value: "0.0.0.0"
       - key: PAYMENT_MONGODB_URI
         sync: false
       - key: AUTH_SERVICE_URL
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-auth
-          property: hostport
+          envVarKey: RENDER_EXTERNAL_URL
       - key: INTERNAL_SECRET
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-auth
           envVarKey: INTERNAL_SECRET
       - key: RAZORPAY_KEY_ID
@@ -144,41 +119,34 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
 
-  # ==============================================================================
-  # SERVICE 5: AI AGENT SERVICE (Private Service)
-  # Manages LangChain/LangGraph agents, RAG, tool calling, and Cloudinary uploads.
-  # Runs in its own container so heavy AI memory usage is isolated from other services.
-  # ==============================================================================
-  - type: pserv
+  - type: web
     name: nexusmind-agent
     runtime: docker
-    dockerContext: Backend
-    dockerfilePath: Backend/Services/Agent/Dockerfile
-    plan: starter
+    plan: free
+    autoDeployTrigger: "off"
     region: oregon
     branch: main
+    dockerContext: Backend
+    dockerfilePath: Backend/Services/Agent/Dockerfile
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "8083"
-      - key: INTERNAL_HOST
-        value: "0.0.0.0"
       - key: AGENT_MONGODB_URI
         sync: false
       - key: AUTH_SERVICE_URL
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-auth
-          property: hostport
+          envVarKey: RENDER_EXTERNAL_URL
       - key: CHAT_SERVICE_URL
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-chat
-          property: hostport
+          envVarKey: RENDER_EXTERNAL_URL
       - key: INTERNAL_SECRET
         fromService:
-          type: pserv
+          type: web
           name: nexusmind-auth
           envVarKey: INTERNAL_SECRET
       - key: REDIS_URL
@@ -204,4 +172,4 @@ services:
       - key: QDRANT_API_KEY
         sync: false
       - key: QDRANT_COLLECTION
-        value: "nexusmind_pdf_rag"
+        value: nexusmind_pdf_rag
