@@ -21,10 +21,16 @@ dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
 
-const AUTH_SERVICE = process.env.AUTH_SERVICE || "http://127.0.0.1:8001";
-const CHAT_SERVICE = process.env.CHAT_SERVICE || "http://127.0.0.1:8002";
-const PAYMENT_SERVICE = process.env.PAYMENT_SERVICE || "http://127.0.0.1:8003";
-const AGENT_SERVICE = process.env.AGENT_SERVICE || "http://127.0.0.1:8083";
+const normalizeServiceUrl = (url, fallback) => {
+  const target = (url || fallback || "").trim();
+  if (!target) return "";
+  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+};
+
+const AUTH_SERVICE = normalizeServiceUrl(process.env.AUTH_SERVICE, "http://127.0.0.1:8001");
+const CHAT_SERVICE = normalizeServiceUrl(process.env.CHAT_SERVICE, "http://127.0.0.1:8002");
+const PAYMENT_SERVICE = normalizeServiceUrl(process.env.PAYMENT_SERVICE, "http://127.0.0.1:8003");
+const AGENT_SERVICE = normalizeServiceUrl(process.env.AGENT_SERVICE, "http://127.0.0.1:8083");
 
 // Configure trust proxy safely according to deployment topology
 // When running behind reverse proxy (e.g. Nginx, Cloudflare), set TRUST_PROXY=true or number of hops

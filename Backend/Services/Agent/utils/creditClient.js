@@ -1,7 +1,12 @@
 import axios from "axios";
 
+const normalizeUrl = (url, fallback) => {
+  const target = (url || fallback || "").trim();
+  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+};
+
 const getAuthServiceUrl = () =>
-  process.env.AUTH_SERVICE_URL || "http://127.0.0.1:8001";
+  normalizeUrl(process.env.AUTH_SERVICE_URL, "http://127.0.0.1:8001");
 
 const getInternalHeaders = () => {
   const secret = process.env.INTERNAL_SECRET || "";

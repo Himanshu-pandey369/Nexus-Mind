@@ -2,9 +2,9 @@ import mongoose from "mongoose";
 import "dotenv/config";
 
 const connectDb = async () => {
-  const uri = process.env.MONGODB_URI;
+  const uri = process.env.AGENT_MONGODB_URI || process.env.MONGODB_URI;
   if (!uri) {
-    console.warn("[Agent] MONGODB_URI is not defined. Image database persistence will not be available.");
+    console.warn("[Agent] AGENT_MONGODB_URI or MONGODB_URI is not defined. Image database persistence will not be available.");
     return;
   }
 

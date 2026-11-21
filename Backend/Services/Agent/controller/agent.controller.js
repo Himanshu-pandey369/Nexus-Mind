@@ -12,7 +12,12 @@ import {
   recordUsage,
 } from "../utils/creditClient.js";
 
-const CHAT_SERVICE_URL = process.env.CHAT_SERVICE_URL || "http://localhost:8002";
+const normalizeUrl = (url, fallback) => {
+  const target = (url || fallback || "").trim();
+  return /^https?:\/\//i.test(target) ? target : `http://${target}`;
+};
+
+const CHAT_SERVICE_URL = normalizeUrl(process.env.CHAT_SERVICE_URL, "http://localhost:8002");
 const VALID_AGENTS = ["auto", "chat", "search", "coding", "pdf", "ppt", "vision", "imageAnalyzer", "pdfRag"];
 
 // Helper to determine if an uploaded file is a PDF

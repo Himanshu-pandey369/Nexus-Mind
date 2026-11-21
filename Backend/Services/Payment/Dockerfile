@@ -1,6 +1,6 @@
 # Multi-stage Dockerfile for Payment Service
-# Build from the 'Backend' root directory:
-#   docker build -f Services/Payment/Dockerfile -t nexusmind-payment .
+# Build context: 'Backend' directory
+# Build command: docker build -f Services/Payment/Dockerfile -t nexusmind-payment .
 
 # ----------------- Dependencies Stage -----------------
 FROM node:20-alpine AS deps
@@ -34,6 +34,6 @@ WORKDIR /app/Services/Payment
 EXPOSE 8003
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8003/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:${PORT:-8003}/health || exit 1
 
 CMD ["node", "index.js"]

@@ -1,5 +1,19 @@
+# ==============================================================================
+# NexusMind Local Multi-Container Architecture (Docker Compose)
+# Simulates the 5-microservice Render production topology with independent containers:
+# 1. Gateway (Public API Gateway & Proxy)
+# 2. Auth Service (Private Auth & Credits)
+# 3. Chat Service (Private Chat & Conversations)
+# 4. Payment Service (Private Razorpay Payments & Webhook)
+# 5. Agent Service (Private AI Agents & RAG Pipeline)
+# Infrastructure:
+# - Redis (Standalone Session Cache & Rate Limiting Store)
+# ==============================================================================
 
 services:
+  # ----------------------------------------------------------------------------
+  # INFRASTRUCTURE: REDIS CACHE
+  # ----------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: nexusmind-redis
@@ -8,86 +22,148 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - nexusmind-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # ----------------------------------------------------------------------------
+  # SERVICE 2: AUTH & CREDITS SERVICE (Internal Port 8001)
+  # ----------------------------------------------------------------------------
   auth-service:
     build:
       context: .
       dockerfile: Services/auth/Dockerfile
     container_name: nexusmind-auth
     restart: unless-stopped
+    ports:
+      - "8001:8001"
     env_file:
       - Services/auth/.env
     environment:
       PORT: "8001"
+      INTERNAL_HOST: "0.0.0.0"
       NODE_ENV: production
+      REDIS_URL: redis://redis:6379
       Redis_URL: redis://redis:6379
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-nexusmind_shared_secret_for_local_compose_test}
       FIREBASE_SERVICE_ACCOUNT_PATH: /app/secrets/serviceAccountKey.json
     volumes:
       - ./Services/auth/serviceAccountKey.json:/app/secrets/serviceAccountKey.json:ro
+    networks:
+      - nexusmind-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       redis:
         condition: service_healthy
 
+  # ----------------------------------------------------------------------------
+  # SERVICE 3: CHAT SERVICE (Internal Port 8002)
+  # ----------------------------------------------------------------------------
   chat-service:
     build:
       context: .
       dockerfile: Services/Chat/Dockerfile
     container_name: nexusmind-chat
     restart: unless-stopped
+    ports:
+      - "8002:8002"
     env_file:
       - Services/Chat/.env
     environment:
       PORT: "8002"
+      INTERNAL_HOST: "0.0.0.0"
       NODE_ENV: production
-      Redis_URL: redis://redis:6379
-    depends_on:
-      redis:
-        condition: service_healthy
+    networks:
+      - nexusmind-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8002/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
+  # ----------------------------------------------------------------------------
+  # SERVICE 4: PAYMENT SERVICE (Internal Port 8003)
+  # ----------------------------------------------------------------------------
   payment-service:
     build:
       context: .
       dockerfile: Services/Payment/Dockerfile
     container_name: nexusmind-payment
     restart: unless-stopped
+    ports:
+      - "8003:8003"
     env_file:
       - Services/Payment/.env
     environment:
       PORT: "8003"
+      INTERNAL_HOST: "0.0.0.0"
       NODE_ENV: production
       AUTH_SERVICE_URL: http://auth-service:8001
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-nexusmind_shared_secret_for_local_compose_test}
+    networks:
+      - nexusmind-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       auth-service:
-        condition: service_started
+        condition: service_healthy
 
+  # ----------------------------------------------------------------------------
+  # SERVICE 5: AI AGENT SERVICE (Internal Port 8083)
+  # ----------------------------------------------------------------------------
   agent-service:
     build:
       context: .
       dockerfile: Services/Agent/Dockerfile
     container_name: nexusmind-agent
     restart: unless-stopped
+    ports:
+      - "8083:8083"
     env_file:
       - Services/Agent/.env
     environment:
       PORT: "8083"
+      INTERNAL_HOST: "0.0.0.0"
       NODE_ENV: production
       AUTH_SERVICE_URL: http://auth-service:8001
       CHAT_SERVICE_URL: http://chat-service:8002
+      REDIS_URL: redis://redis:6379
       Redis_URL: redis://redis:6379
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-nexusmind_shared_secret_for_local_compose_test}
+    networks:
+      - nexusmind-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8083/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     depends_on:
       redis:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
       chat-service:
-        condition: service_started
+        condition: service_healthy
 
+  # ----------------------------------------------------------------------------
+  # SERVICE 1: API GATEWAY (Public Port 8000)
+  # ----------------------------------------------------------------------------
   gateway:
     build:
       context: .
@@ -101,11 +177,13 @@ services:
     environment:
       PORT: "8000"
       NODE_ENV: production
+      REDIS_URL: redis://redis:6379
       Redis_URL: redis://redis:6379
       AUTH_SERVICE: http://auth-service:8001
       CHAT_SERVICE: http://chat-service:8002
       PAYMENT_SERVICE: http://payment-service:8003
       AGENT_SERVICE: http://agent-service:8083
+      INTERNAL_SECRET: ${INTERNAL_SECRET:-nexusmind_shared_secret_for_local_compose_test}
       TRUST_PROXY: ${TRUST_PROXY:-true}
       RATE_LIMIT_GENERAL_WINDOW_MS: ${RATE_LIMIT_GENERAL_WINDOW_MS:-900000}
       RATE_LIMIT_GENERAL_MAX: ${RATE_LIMIT_GENERAL_MAX:-300}
@@ -117,17 +195,29 @@ services:
       RATE_LIMIT_UPLOAD_MAX: ${RATE_LIMIT_UPLOAD_MAX:-10}
       RATE_LIMIT_PAYMENT_WINDOW_MS: ${RATE_LIMIT_PAYMENT_WINDOW_MS:-900000}
       RATE_LIMIT_PAYMENT_MAX: ${RATE_LIMIT_PAYMENT_MAX:-30}
+    networks:
+      - nexusmind-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:8000/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     depends_on:
       redis:
         condition: service_healthy
       auth-service:
-        condition: service_started
+        condition: service_healthy
       chat-service:
-        condition: service_started
+        condition: service_healthy
       payment-service:
-        condition: service_started
+        condition: service_healthy
       agent-service:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   redis_data:
+
+networks:
+  nexusmind-network:
+    driver: bridge
