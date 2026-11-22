@@ -76,6 +76,8 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
+
 const configuredFrontend = process.env.FRONTEND_URL;
 const allowedOrigins = configuredFrontend
   ? configuredFrontend
@@ -107,7 +109,6 @@ app.use(
     },
   })
 );
-app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cookieParser());
 
 // Apply global general API rate limiter
@@ -236,6 +237,26 @@ app.get("/", (req, res) => {
   return res.status(200).json({
     message: "Hello from NexusMind Gateway",
     status: "running",
+  });
+});
+
+// 404 handler for unmatched routes
+app.use((req, res) => {
+  return res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Centralized error-handling middleware
+app.use((err, req, res, next) => {
+  console.error("[Gateway Error]", err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  return res.status(err.status || err.statusCode || 500).json({
+    success: false,
+    message: err.message || "Internal gateway error",
   });
 });
 

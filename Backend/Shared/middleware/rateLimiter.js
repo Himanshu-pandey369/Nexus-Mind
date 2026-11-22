@@ -28,7 +28,26 @@ export function createRateLimiter(options = {}) {
   const prefix = `rl:${namespace}:`;
 
   const store = new RedisStore({
-    sendCommand: (command, ...args) => redis.call(command, ...args),
+    sendCommand: async (command, ...args) => {
+      // Fail fast if Redis is not in ready state so passOnStoreError can allow the request without latency
+      if (redis.status !== "ready") {
+        throw new Error(`Redis is unavailable (status: ${redis.status})`);
+      }
+
+      // Hard timeout safety net: rate limiting must never block an HTTP request for more than 1500ms
+      let timeoutHandle;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error("Redis rate-limiter command timed out"));
+        }, 1500);
+      });
+
+      try {
+        return await Promise.race([redis.call(command, ...args), timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+    },
     prefix,
   });
 
