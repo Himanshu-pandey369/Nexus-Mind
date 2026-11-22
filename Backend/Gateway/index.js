@@ -232,8 +232,11 @@ app.use(
   })
 );
 
-app.use("/", (req, res) => {
-  res.json({ message: "Hello from gateway" });
+app.get("/", (req, res) => {
+  return res.status(200).json({
+    message: "Hello from NexusMind Gateway",
+    status: "running",
+  });
 });
 
 const PORT = process.env.PORT || 8000;
