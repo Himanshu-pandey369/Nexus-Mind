@@ -2,6 +2,7 @@ import express from "express";
 import helmet from "helmet";
 import "dotenv/config";
 import connectDb, { createHealthHandler, sanitizeMongoError } from "./config/db.js";
+import { warnAgentStartupConfig } from "./config/startupWarnings.js";
 import agentRouter from "./routes/agent.route.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
@@ -19,6 +20,8 @@ try {
   console.error("MongoDB connection initialization failed:", sanitizeMongoError(error));
   process.exit(1);
 }
+
+warnAgentStartupConfig();
 
 app.get("/health", createHealthHandler());
 

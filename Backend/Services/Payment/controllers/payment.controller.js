@@ -504,10 +504,9 @@ export const handleWebhook = async (req, res) => {
       });
     }
 
-    const webhookSecret =
-      process.env.RAZORPAY_WEBHOOK_SECRET || process.env.RAZORPAY_KEY_SECRET;
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
-    if (!webhookSecret) {
+    if (!webhookSecret || !webhookSecret.trim()) {
       console.error("[Payment Webhook] Webhook secret not configured on server");
       return res.status(500).json({
         success: false,
@@ -525,12 +524,14 @@ export const handleWebhook = async (req, res) => {
       .update(rawBody)
       .digest("hex");
 
+    const expectedBuffer = Buffer.from(expectedSignature, "utf8");
+    const signatureBuffer =
+      typeof signature === "string" ? Buffer.from(signature, "utf8") : null;
+
     const isSignatureValid =
-      expectedSignature.length === signature.length &&
-      crypto.timingSafeEqual(
-        Buffer.from(expectedSignature),
-        Buffer.from(signature)
-      );
+      signatureBuffer !== null &&
+      expectedBuffer.length === signatureBuffer.length &&
+      crypto.timingSafeEqual(expectedBuffer, signatureBuffer);
 
     if (!isSignatureValid) {
       console.warn("[Payment Webhook] Invalid webhook signature detected");

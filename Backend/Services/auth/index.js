@@ -1,11 +1,13 @@
 import express from "express";
 import helmet from "helmet";
+import mongoose from "mongoose";
 import connectDb from "./config/db.js";
 import "dotenv/config";
 import authRouter from "./routes/auth.route.js";
 import creditRouter from "./routes/credit.route.js";
 import usageRouter from "./routes/usage.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
+import { createHealthHandler } from "../../Shared/middleware/healthCheck.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -22,9 +24,7 @@ try {
 }
 
 // Health check route
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "auth" });
-});
+app.get("/health", createHealthHandler("auth", mongoose));
 
 app.use(internalServiceAuth);
 

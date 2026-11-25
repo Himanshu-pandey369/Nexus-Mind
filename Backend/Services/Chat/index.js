@@ -1,9 +1,11 @@
 import express from "express";
 import helmet from "helmet";
+import mongoose from "mongoose";
 import connectDb from "./config/db.js";
 import "dotenv/config";
 import chatRouter from "./routes/chat.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
+import { createHealthHandler } from "../../Shared/middleware/healthCheck.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -18,9 +20,7 @@ try {
   process.exit(1);
 }
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "chat" });
-});
+app.get("/health", createHealthHandler("chat", mongoose));
 
 app.use(internalServiceAuth);
 app.use("/chat", chatRouter);

@@ -1,5 +1,6 @@
 import express from "express";
 import helmet from "helmet";
+import mongoose from "mongoose";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -8,8 +9,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 import connectDb from "./config/db.js";
+import { warnPaymentStartupConfig } from "./config/startupWarnings.js";
 import paymentRouter from "./routes/payment.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
+import { createHealthHandler } from "../../Shared/middleware/healthCheck.js";
 
 const app = express();
 app.disable("x-powered-by");
@@ -30,9 +33,9 @@ try {
   process.exit(1);
 }
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ success: true, service: "payment", status: "healthy" });
-});
+warnPaymentStartupConfig();
+
+app.get("/health", createHealthHandler("payment", mongoose));
 
 app.use(internalServiceAuth);
 app.use("/payment", paymentRouter);
