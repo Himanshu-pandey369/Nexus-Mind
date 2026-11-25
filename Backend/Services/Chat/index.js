@@ -1,11 +1,14 @@
 import express from "express";
+import helmet from "helmet";
 import connectDb from "./config/db.js";
 import "dotenv/config";
 import chatRouter from "./routes/chat.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+app.disable("x-powered-by");
 const internalServiceAuth = createInternalServiceAuth();
+app.use(helmet());
 app.use(express.json());
 
 try {

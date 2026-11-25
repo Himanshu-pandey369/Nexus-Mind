@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import connectDb from "./config/db.js";
 import "dotenv/config";
 import authRouter from "./routes/auth.route.js";
@@ -7,8 +8,10 @@ import usageRouter from "./routes/usage.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+app.disable("x-powered-by");
 const internalServiceAuth = createInternalServiceAuth();
 app.set("trust proxy", 1);
+app.use(helmet());
 app.use(express.json());
 
 try {

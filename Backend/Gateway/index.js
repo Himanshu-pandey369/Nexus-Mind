@@ -4,9 +4,11 @@ import proxy from "express-http-proxy";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
 import { getInternalServiceHeaders } from "../Shared/middleware/serviceAuth.js";
+import { createCorsOptions } from "./config/cors.js";
 import { authMiddleware } from "./middleware/auth.middle.js";
 import { getCurrentUser } from "./controllers/user.controller.js";
 import {
@@ -21,6 +23,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 const app = express();
+app.disable("x-powered-by");
+app.use(helmet());
 const internalServiceHeaders = getInternalServiceHeaders();
 
 const normalizeServiceUrl = (url, fallback, name) => {
@@ -78,29 +82,7 @@ app.get("/health", (req, res) => {
 
 app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 
-const configuredFrontend = process.env.FRONTEND_URL;
-const allowedOrigins = configuredFrontend
-  ? configuredFrontend
-      .split(",")
-      .map((url) => url.trim().replace(/\/+$/, ""))
-      .filter(Boolean)
-  : [];
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.length === 0) {
-        return callback(null, true);
-      }
-      const normalizedOrigin = origin.replace(/\/+$/, "");
-      if (allowedOrigins.includes(normalizedOrigin)) {
-        return callback(null, true);
-      }
-      return callback(null, false);
-    },
-    credentials: true,
-  })
-);
+app.use(cors(createCorsOptions()));
 
 app.use(
   express.json({

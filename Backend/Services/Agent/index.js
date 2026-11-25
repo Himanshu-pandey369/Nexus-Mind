@@ -1,11 +1,14 @@
 import express from "express";
+import helmet from "helmet";
 import "dotenv/config";
-import connectDb from "./config/db.js";
+import connectDb, { createHealthHandler, sanitizeMongoError } from "./config/db.js";
 import agentRouter from "./routes/agent.route.js";
 import imageRoutes from "./routes/imageRoutes.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+app.disable("x-powered-by");
+app.use(helmet());
 const internalServiceAuth = createInternalServiceAuth();
 app.use(express.json());
 
@@ -13,12 +16,11 @@ app.use(express.json());
 try {
   await connectDb();
 } catch (error) {
-  console.error("MongoDB connection initialization failed:", error.message);
+  console.error("MongoDB connection initialization failed:", sanitizeMongoError(error));
+  process.exit(1);
 }
 
-app.get("/health", (req, res) => {
-  res.status(200).json({ status: "ok", service: "agent" });
-});
+app.get("/health", createHealthHandler());
 
 app.use(internalServiceAuth);
 app.get("/", (req, res) => {

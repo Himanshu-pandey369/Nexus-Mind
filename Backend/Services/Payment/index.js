@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -11,6 +12,8 @@ import paymentRouter from "./routes/payment.route.js";
 import { createInternalServiceAuth } from "../../Shared/middleware/serviceAuth.js";
 
 const app = express();
+app.disable("x-powered-by");
+app.use(helmet());
 const internalServiceAuth = createInternalServiceAuth();
 app.use(
   express.json({

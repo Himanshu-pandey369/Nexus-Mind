@@ -16,7 +16,7 @@ const redis = new Redis(redisUrl, {
   keepAlive: 15000, // 15s TCP keepalive prevents idle connection drops (ECONNRESET) on cloud platforms like Render
   enableReadyCheck: true,
   enableOfflineQueue: true,
-  ...(isTls ? { tls: { rejectUnauthorized: false } } : {}),
+  ...(isTls ? { tls: {} } : {}),
 });
 
 redis.on("connect", () => {
