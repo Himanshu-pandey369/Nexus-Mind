@@ -227,3 +227,42 @@ test("Local development preserves localhost access when FRONTEND_URL is unset wh
   assert.equal(evilRes.headers.get("access-control-allow-origin"), null);
   assert.equal(evilRes.headers.get("access-control-allow-credentials"), null);
 });
+
+test("Production CORS and OPTIONS preflight for deployed Vercel origin across API routes", async () => {
+  const vercelOrigin = "https://nexus-mind-delta.vercel.app";
+  const app = createTestApp({
+    frontendUrl: vercelOrigin,
+    nodeEnv: "production",
+  });
+
+  for (const [method, route] of [
+    ["POST", "/auth"],
+    ["POST", "/auth/logout"],
+    ["GET", "/me"],
+    ["GET", "/chat/conversations"],
+    ["POST", "/agent/chat"],
+    ["GET", "/credits/balance"],
+    ["POST", "/payment/create-order"],
+  ]) {
+    const preflight = await invokeApp(app, {
+      method: "OPTIONS",
+      url: route,
+      headers: {
+        Origin: vercelOrigin,
+        "Access-Control-Request-Method": method,
+        "Access-Control-Request-Headers": "Content-Type",
+      },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), vercelOrigin);
+    assert.equal(preflight.headers.get("access-control-allow-credentials"), "true");
+    assert.ok(preflight.headers.get("access-control-allow-methods")?.includes(method));
+  }
+
+  const localhostRes = await invokeApp(app, {
+    url: "/health",
+    headers: { Origin: "http://localhost:5173" },
+  });
+  assert.equal(localhostRes.headers.get("access-control-allow-origin"), null);
+  assert.equal(localhostRes.headers.get("access-control-allow-credentials"), null);
+});
